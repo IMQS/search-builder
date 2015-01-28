@@ -1,0 +1,26 @@
+{
+	"Databases": {
+		"index": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"searchindex",
+			"User":			"imqs",
+			"Password":		"password"
+		},
+		"main": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"main",
+			"User":			"imqs",
+			"Password":		"password"
+		}
+	},
+	"Elements": [
+		{
+			"Name":		"Meter ID",
+			"Database":	"main",
+			"Table":	"WaterDemandMeterWater",
+			"Field":	"Meter_ID"
+		}
+	]
+}

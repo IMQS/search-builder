@@ -1,0 +1,9 @@
+[submodule "src/github.com/IMQS/search"]
+	path = src/github.com/IMQS/search
+	url = git@github.com:IMQS/search
+[submodule "src/github.com/BurntSushi/migration"]
+	path = src/github.com/BurntSushi/migration
+	url = git@github.com:BurntSushi/migration
+[submodule "src/github.com/lib/pq"]
+	path = src/github.com/lib/pq
+	url = git@github.com:lib/pq
