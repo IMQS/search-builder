@@ -21,6 +21,30 @@
 			"Database":	"main",
 			"Table":	"WaterDemandMeterWater",
 			"Field":	"Meter_ID"
+		},
+		{
+			"Name":		"Stand ID",
+			"Database":	"main",
+			"Table":	"WaterDemandStand",
+			"Field":	"Stand_ID"
+		},
+		{
+			"Name":		"GIS Code",
+			"Database":	"main",
+			"Table":	"WaterDemandStand",
+			"Field":	"GIS_Code"
+		},
+		{
+			"Name":		"Address",
+			"Database":	"main",
+			"Table":	"WaterDemandStand",
+			"Field":	"Address"
+		},
+			{
+			"Name":		"Suburb",
+			"Database":	"main",
+			"Table":	"WaterDemandStand",
+			"Field":	"Suburb_Category"
 		}
-	]
+]
 }

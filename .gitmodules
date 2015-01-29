@@ -7,3 +7,6 @@
 [submodule "src/github.com/lib/pq"]
 	path = src/github.com/lib/pq
 	url = git@github.com:lib/pq
+[submodule "src/github.com/IMQS/cli"]
+	path = src/github.com/IMQS/cli
+	url = git@github.com:IMQS/cli
