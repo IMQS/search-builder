@@ -10,3 +10,9 @@
 [submodule "src/github.com/IMQS/cli"]
 	path = src/github.com/IMQS/cli
 	url = git@github.com:IMQS/cli
+[submodule "src/github.com/julienschmidt/httprouter"]
+	path = src/github.com/julienschmidt/httprouter
+	url = git@github.com:julienschmidt/httprouter.git
+[submodule "src/github.com/natefinch/lumberjack"]
+	path = src/github.com/natefinch/lumberjack
+	url = git@github.com:natefinch/lumberjack
