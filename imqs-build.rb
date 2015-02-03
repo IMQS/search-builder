@@ -26,7 +26,7 @@ end
 case ARGV[0]
 	when "prepare"	then
 		exec_or_die("go install github.com/IMQS/search/cmd")
-		FileUtils.cp("bin/cmd.exe", out_dir + '/bin/imqs-search.exe')
+		FileUtils.cp("bin/cmd.exe", out_dir + '/bin/imqssearch.exe')
 	when "test_unit" then
 		exec_or_die("go test github.com/IMQS/search/search")
 	when "test_integration" then
