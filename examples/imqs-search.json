@@ -7,7 +7,7 @@
 			"User":			"imqs",
 			"Password":		"password"
 		},
-		"main": {
+		"ImqsServerMain": {
 			"Driver":		"postgres",
 			"Host":			"127.0.0.1",
 			"Database": 	"main",
@@ -18,31 +18,31 @@
 	"Elements": [
 		{
 			"Name":		"Meter ID",
-			"Database":	"main",
+			"Database":	"ImqsServerMain",
 			"Table":	"WaterDemandMeterWater",
 			"Field":	"Meter_ID"
 		},
 		{
 			"Name":		"Stand ID",
-			"Database":	"main",
+			"Database":	"ImqsServerMain",
 			"Table":	"WaterDemandStand",
 			"Field":	"Stand_ID"
 		},
 		{
 			"Name":		"GIS Code",
-			"Database":	"main",
+			"Database":	"ImqsServerMain",
 			"Table":	"WaterDemandStand",
 			"Field":	"GIS_Code"
 		},
 		{
 			"Name":		"Address",
-			"Database":	"main",
+			"Database":	"ImqsServerMain",
 			"Table":	"WaterDemandStand",
 			"Field":	"Address"
 		},
 			{
 			"Name":		"Suburb",
-			"Database":	"main",
+			"Database":	"ImqsServerMain",
 			"Table":	"WaterDemandStand",
 			"Field":	"Suburb_Category"
 		}
