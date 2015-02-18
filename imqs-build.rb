@@ -28,7 +28,7 @@ case ARGV[0]
 		exec_or_die("go install github.com/IMQS/search/cmd")
 		FileUtils.cp("bin/cmd.exe", out_dir + '/bin/imqssearch.exe')
 	when "test_unit" then
-		exec_or_die("go test github.com/IMQS/search/search")
+		exec_or_die("go test github.com/IMQS/search/search -db_postgres")
 	when "test_integration" then
 end
 
