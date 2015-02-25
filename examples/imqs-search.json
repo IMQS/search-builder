@@ -5,46 +5,90 @@
 			"Host":			"127.0.0.1",
 			"Database": 	"searchindex",
 			"User":			"imqs",
-			"Password":		"password"
+			"Password":		"1mq5p@55w0rd"
 		},
 		"ImqsServerMain": {
 			"Driver":		"postgres",
 			"Host":			"127.0.0.1",
 			"Database": 	"main",
 			"User":			"imqs",
-			"Password":		"password"
+			"Password":		"1mq5p@55w0rd",
+			"Tables": {
+				"Province": {
+					"Name": "Province",
+					"Fields": [
+						{
+							"Name": "Name",
+							"Field": "Name",
+							"IsHumanID": true
+						},
+						{
+							"Name": "Code",
+							"Field": "Code"
+						}
+					]
+				},
+				"LocalMunicipality": {
+					"Name": "Local Municipality",
+					"Fields": [
+						{
+							"Name": "Name",
+							"Field": "Name",
+							"IsHumanID": true
+						},
+						{
+							"Name": "Code",
+							"Field": "Code"
+						}
+					]
+				},
+				"DistrictMunicipality": {
+					"Name": "District Municipality",
+					"Fields": [
+						{
+							"Name": "Name",
+							"Field": "Name",
+							"IsHumanID": true
+						},
+						{
+							"Name": "Code",
+							"Field": "Code"
+						}
+					]
+				},
+				"WaterDemandMeterWater": {
+					"Name": "Water Meter",
+					"Fields": [
+						{
+							"Name": "Meter ID",
+							"Field": "Meter_ID",
+							"IsHumanID": true
+						}
+					]
+				},
+				"WaterDemandStand": {
+					"Name": "Stand",
+					"Fields": [
+						{
+							"Name": "Address",
+							"Field": "Address",
+							"IsHumanID": true
+						},
+						{
+							"Name": "GIS Code",
+							"Field": "GIS_Code"
+						},
+						{
+							"Name": "Stand ID",
+							"Field": "Stand_ID"
+						},
+						{
+							"Name": "Suburb",
+							"Field": "Suburb_Category"
+						}
+					]
+				}
+			}
 		}
-	},
-	"Elements": [
-		{
-			"Name":		"Meter ID",
-			"Database":	"ImqsServerMain",
-			"Table":	"WaterDemandMeterWater",
-			"Field":	"Meter_ID"
-		},
-		{
-			"Name":		"Stand ID",
-			"Database":	"ImqsServerMain",
-			"Table":	"WaterDemandStand",
-			"Field":	"Stand_ID"
-		},
-		{
-			"Name":		"GIS Code",
-			"Database":	"ImqsServerMain",
-			"Table":	"WaterDemandStand",
-			"Field":	"GIS_Code"
-		},
-		{
-			"Name":		"Address",
-			"Database":	"ImqsServerMain",
-			"Table":	"WaterDemandStand",
-			"Field":	"Address"
-		},
-			{
-			"Name":		"Suburb",
-			"Database":	"ImqsServerMain",
-			"Table":	"WaterDemandStand",
-			"Field":	"Suburb_Category"
-		}
-]
+	}
 }
