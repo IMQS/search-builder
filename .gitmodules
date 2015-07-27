@@ -13,6 +13,9 @@
 [submodule "src/github.com/julienschmidt/httprouter"]
 	path = src/github.com/julienschmidt/httprouter
 	url = git@github.com:julienschmidt/httprouter.git
-[submodule "src/github.com/natefinch/lumberjack"]
-	path = src/github.com/natefinch/lumberjack
+[submodule "src/github.com/IMQS/log"]
+	path = src/github.com/IMQS/log
+	url = git@github.com:IMQS/log
+[submodule "src/gopkg.in/natefinch/lumberjack.v2"]
+	path = src/gopkg.in/natefinch/lumberjack.v2
 	url = git@github.com:natefinch/lumberjack
