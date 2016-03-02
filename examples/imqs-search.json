@@ -64,7 +64,12 @@
 							"Field": "Meter_ID",
 							"IsHumanID": true
 						}
-					]
+					],
+					"Categories": ["Water", "Billing"],
+					"DisplayedFields": ["Meter_ID"],
+					"Types": {
+						"WiFi": "Type=wifi"
+					}
 				},
 				"WaterDemandStand": {
 					"Name": "Stand",
