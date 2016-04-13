@@ -19,3 +19,6 @@
 [submodule "src/gopkg.in/natefinch/lumberjack.v2"]
 	path = src/gopkg.in/natefinch/lumberjack.v2
 	url = git@github.com:natefinch/lumberjack
+[submodule "src/github.com/pierrec/xxHash"]
+	path = src/github.com/pierrec/xxHash
+	url = https://github.com/pierrec/xxHash.git
