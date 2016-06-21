@@ -77,19 +77,23 @@
 						{
 							"Name": "Address",
 							"Field": "Address",
+							"Order": "3",
 							"IsHumanID": true
 						},
 						{
 							"Name": "GIS Code",
-							"Field": "GIS_Code"
+							"Field": "GIS_Code",
+							"Order": "1"
 						},
 						{
 							"Name": "Stand ID",
-							"Field": "Stand_ID"
+							"Field": "Stand_ID",
+							"Order": "2"
 						},
 						{
 							"Name": "Suburb",
-							"Field": "Suburb_Category"
+							"Field": "Suburb_Category",
+							"Order": "4"
 						}
 					]
 				}
