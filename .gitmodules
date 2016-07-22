@@ -22,3 +22,6 @@
 [submodule "src/github.com/pierrec/xxHash"]
 	path = src/github.com/pierrec/xxHash
 	url = https://github.com/pierrec/xxHash.git
+[submodule "src/github.com/IMQS/gzipresponse"]
+	path = src/github.com/IMQS/gzipresponse
+	url = git@github.com:IMQS/gzipresponse
