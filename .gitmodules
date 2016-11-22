@@ -25,3 +25,6 @@
 [submodule "src/github.com/IMQS/gzipresponse"]
 	path = src/github.com/IMQS/gzipresponse
 	url = git@github.com:IMQS/gzipresponse
+[submodule "src/github.com/IMQS/serviceconfigsgo"]
+	path = src/github.com/IMQS/serviceconfigsgo
+	url = git@github.com:IMQS/serviceconfigsgo.git
