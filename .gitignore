@@ -1,2 +1,6 @@
 bin/
 pkg/
+*.sublime-project
+*.sublime-workspace
+.idea/
+*.iml
