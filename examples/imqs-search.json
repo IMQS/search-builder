@@ -7,6 +7,13 @@
 			"User":			"imqs",
 			"Password":		"1mq5p@55w0rd"
 		},
+		"ImqsServerGeneric": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"generic",
+			"User":			"imqs",
+			"Password":		"1mq5p@55w0rd"
+		},
 		"ImqsServerMain": {
 			"Driver":		"postgres",
 			"Host":			"127.0.0.1",
