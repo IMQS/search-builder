@@ -4,3 +4,6 @@ pkg/
 *.sublime-workspace
 .idea/
 *.iml
+.hg
+.vscode/
+
