@@ -1,0 +1,57 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+
+		{
+			"name": "Debug",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"port": 2345,
+			"host": "127.0.0.1",
+			"cwd": "${workspaceRoot}",
+			"program": "${workspaceRoot}/src/github.com/IMQS/search/cmd/main.go",
+			"env": {
+				"GOPATH": "${workspaceRoot}"
+			},
+			"args": [
+				"-c=examples/imqs-search.json",
+				"run"
+			],
+			"showLog": true
+		},
+		{
+			"name": "Launch All tests.",
+			"type": "go",
+			"request": "launch",
+			"mode": "test",
+			"port": 2345,
+			"host": "127.0.0.1",
+			"cwd": "${workspaceRoot}",
+			"program": "${workspaceRoot}/src/github.com/IMQS/search/search/engine_test.go",
+			"env": {
+				"GOPATH": "${workspaceRoot}"
+			},
+			"args": [
+				"-db_postgres"
+			],
+			"showLog": true
+		},
+		{
+			"name": "Launch TestUpdateConfig",
+			"type": "go",
+			"request": "launch",
+			"mode": "test",
+			"program": "${workspaceRoot}/src/github.com/IMQS/search/search/engine_test.go",
+			"env": {
+				"GOPATH": "${workspaceRoot}"
+			},
+			"args": [
+				"-test.v",
+				"-test.run",
+				"TestUpdateConfig",
+				"-db_postgres"
+			]
+		}
+	]
+}
