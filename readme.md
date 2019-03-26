@@ -1,18 +1,24 @@
-# Search builder
+# IMQS Search Server
 
-This is the top-level project for the Search service.
+This was created in order to serve up domain-specific searches for IMQS. Examples of what we're searching for are
+Water Meter ID, Stand ID, Municipal Account Number.
 
-This is basically just a bunch of git sub-module references and a build script.
+This server works by reading a set of fields from databases, splitting them up into tokens, and indexing
+those tokens in one giant index table.
+
+The goal is not yet to do natural language search, nor to search documents. We'll likely use something like Lucene
+when we get around to that.
+
+# Run
 
 To run the search server:
 
-	env
-	go run src/github.com/IMQS/search/cmd/main.go -c=examples\imqs-search.json run
+	go run main.go -c=example-search.json run
 
+# Test
 To run unit tests:
 
 Postgres must be installed on localhost. Create a user called search_test, with
 password search_test. The user must be able to create databases.
 
-	env
 	go test github.com/IMQS/search/search -db_postgres

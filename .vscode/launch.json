@@ -10,12 +10,9 @@
 			"port": 2345,
 			"host": "127.0.0.1",
 			"cwd": "${workspaceRoot}",
-			"program": "${workspaceRoot}/src/github.com/IMQS/search/cmd/main.go",
-			"env": {
-				"GOPATH": "${workspaceRoot}"
-			},
+			"program": "${workspaceRoot}/main.go",
 			"args": [
-				"-c=examples/imqs-search.json",
+				"-c=example-search.json",
 				"run"
 			],
 			"showLog": true
@@ -28,10 +25,7 @@
 			"port": 2345,
 			"host": "127.0.0.1",
 			"cwd": "${workspaceRoot}",
-			"program": "${workspaceRoot}/src/github.com/IMQS/search/search/engine_test.go",
-			"env": {
-				"GOPATH": "${workspaceRoot}"
-			},
+			"program": "${workspaceRoot}/search/engine_test.go",
 			"args": [
 				"-db_postgres"
 			],
@@ -42,10 +36,7 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "test",
-			"program": "${workspaceRoot}/src/github.com/IMQS/search/search/engine_test.go",
-			"env": {
-				"GOPATH": "${workspaceRoot}"
-			},
+			"program": "${workspaceRoot}/search/engine_test.go",
 			"args": [
 				"-test.v",
 				"-test.run",
