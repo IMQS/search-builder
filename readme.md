@@ -13,7 +13,7 @@ when we get around to that.
 
 To run the search server:
 
-	go run main.go -c=example-search.json run
+	go run imqssearch.go -c=example-search.json run
 
 # Test
 To run unit tests:

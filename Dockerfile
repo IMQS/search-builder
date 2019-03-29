@@ -27,13 +27,13 @@ RUN cat /root/.ssh/id_rsa.pub
 
 RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
 WORKDIR /build/
-RUN go build
+RUN go build imqssearch.go
 
 ####################################
 # Deployed image
 ####################################
 FROM imqs/ubuntu-base
-COPY --from=builder /build/search /opt/search
+COPY --from=builder /build/imqssearch /opt/imqssearch
 EXPOSE 80
-ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "wait-for-postgres.sh", "db", "/opt/search", "run"]
+ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "wait-for-postgres.sh", "db", "/opt/imqssearch", "run"]
 
