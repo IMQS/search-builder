@@ -1,0 +1,25 @@
+{
+	"Databases": {
+		"index": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"unit_test_search_index",
+			"User":			"unit_test_user",
+			"Password":		"unit_test_password"
+		},
+		"db1": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"unit_test_search_src1",
+			"User":			"unit_test_user",
+			"Password":		"unit_test_password"
+		},
+		"db2": {
+			"Driver":		"postgres",
+			"Host":			"127.0.0.1",
+			"Database": 	"unit_test_search_src2",
+			"User":			"unit_test_user",
+			"Password":		"unit_test_password"
+		}
+	}
+}

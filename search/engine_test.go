@@ -415,6 +415,7 @@ func setup(t testing.TB, setupFunc func(testing.TB, *Engine)) *Engine {
 	e := &Engine{}
 	e.ErrorLog = log.New(log.Stdout)
 
+	e.ConfigFile = "engine-test-search.json"
 	// We use to clear the index database here, but removed that once we made
 	// the engine automatically clear out items that were no longer indexed
 	setupFunc(t, e)
