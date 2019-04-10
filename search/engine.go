@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,8 +23,8 @@ var errUnterminatedInstruction = errors.New("Query instruction not terminated")
 var errInvalidPairsInstruction = errors.New("Invalid 'pairs' instruction")
 var errTableNotConfigured = errors.New(msgTableNotConfigured)
 var errTooManyTokensInQuery = errors.New("Query is too complicated")
-var errTooManyIndexedFields = errors.New(fmt.Sprintf("Too many indexed fields. Maximum is %v", maxFieldsPerTable))
-var errRowTupleTooLarge = errors.New(fmt.Sprintf("Too many bytes in row tuple. Maximum is %v", maxBytesInRowTuple))
+var errTooManyIndexedFields = fmt.Errorf("Too many indexed fields. Maximum is %v", maxFieldsPerTable)
+var errRowTupleTooLarge = fmt.Errorf("Too many bytes in row tuple. Maximum is %v", maxBytesInRowTuple)
 var errFieldNotFoundInConfig = errors.New("Field not found in config")
 
 // This is an arbitrary constant. It has performance implications, because we have statically
@@ -124,11 +124,17 @@ func (e *Engine) Initialize(isTest bool) error {
 	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr))
 	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout))
 
-	indexCfg, haveIndex := config.Databases[IndexDatabaseName]
+	genericCfg, haveGeneric := config.Databases[genericDatabaseName]
+	if !haveGeneric {
+		return errors.New("No 'generic' database specified")
+	}
+
+	indexCfg, haveIndex := config.Databases[indexDatabaseName]
 	if !haveIndex {
 		return errors.New("No 'index' database specified")
 	}
-	indexDB, err := OpenIndexDB(indexCfg)
+
+	indexDB, err := OpenIndexDB(indexCfg, genericCfg)
 	if err != nil {
 		return fmt.Errorf("Error connecting to search index database: %v", err)
 	}
@@ -137,7 +143,7 @@ func (e *Engine) Initialize(isTest bool) error {
 	if isTest == false {
 		// Now that we have loaded the file-based config, connect to the database
 		// and read the extra config stored inside the database and merge with the current config
-		if err := e.ReloadMergedConfig(); err != nil {
+		if err := e.reloadMergedConfig(); err != nil {
 			return err
 		}
 	}
@@ -221,12 +227,12 @@ func (e *Engine) Vacuum() error {
 	return err
 }
 
-// Merge file-based config with one stored on the database.
-func (e *Engine) ReloadMergedConfig() error {
+// reloadMergedConfig - Merges file-based config with database search_config
+func (e *Engine) reloadMergedConfig() error {
 	cfg := &Config{}
-	// Reload the original config file from disk
-	err := cfg.LoadFile(e.ConfigFile)
-	if err != nil {
+
+	// Load original config file from disk
+	if err := cfg.LoadFile(e.ConfigFile); err != nil {
 		return err
 	}
 
@@ -240,14 +246,13 @@ func (e *Engine) ReloadMergedConfig() error {
 		var dbName string
 		var tableName string
 		var configString string
-		err := tableRows.Scan(&dbName, &tableName, &configString)
-		if err != nil {
+
+		if err := tableRows.Scan(&dbName, &tableName, &configString); err != nil {
 			return err
 		}
 
 		dbTable := new(ConfigTable)
-		err = json.Unmarshal([]byte(configString), &dbTable)
-		if err != nil {
+		if err = json.Unmarshal([]byte(configString), &dbTable); err != nil {
 			return err
 		}
 
@@ -281,6 +286,9 @@ func (e *Engine) LoadConfigFromFile() error {
 	return nil
 }
 
+/*
+GetConfig - returns the latest search for engine
+*/
 func (e *Engine) GetConfig() *Config {
 	e.ConfigLock.RLock()
 	c := e.Config
@@ -288,17 +296,7 @@ func (e *Engine) GetConfig() *Config {
 	return c
 }
 
-func (e *Engine) updateConfig(databaseName string, configData io.Reader) error {
-	type Table struct {
-		Name  string
-		Table ConfigTable
-	}
-
-	tables := make([]Table, 0)
-	if err := json.NewDecoder(configData).Decode(&tables); err != nil {
-		return err
-	}
-
+func (e *Engine) updateConfig(databaseName string, tables []GenericTable) error {
 	// We update the database in a transaction for atomicity, and we follow the pattern described on
 	// https://godoc.org/github.com/lib/pq
 	txn, err := e.IndexDB.Begin()
@@ -307,10 +305,11 @@ func (e *Engine) updateConfig(databaseName string, configData io.Reader) error {
 	}
 	defer txn.Rollback()
 
-	stmt, err := txn.Prepare("INSERT INTO search_config (dbname, tablename, config) VALUES ($1, $2, $3) ON CONFLICT (dbname, tablename) DO UPDATE SET config = EXCLUDED.config;")
+	stmt, err := txn.Prepare("INSERT INTO search_config (dbname, tablename, longlived_name, config) VALUES ($1, $2, $3, $4) ON CONFLICT (dbname, longlived_name) DO UPDATE SET config = EXCLUDED.config ,tablename = $2;")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	for _, table := range tables {
 		if len(table.Table.Fields) > 32 {
@@ -320,19 +319,149 @@ func (e *Engine) updateConfig(databaseName string, configData io.Reader) error {
 		if err != nil {
 			return err
 		}
-		_, err = stmt.Exec(databaseName, table.Name, string(s))
-		if err != nil {
+
+		if _, err := stmt.Exec(databaseName, table.Name, table.LongLivedName, string(s)); err != nil {
 			return err
 		}
 	}
 
-	if err = stmt.Close(); err != nil {
+	return txn.Commit()
+}
+
+func (e *Engine) deleteConfigTable(database, table string) error {
+	if _, err := e.IndexDB.Exec(`DELETE FROM search_config WHERE tablename = $1`, table); err != nil {
+		e.ErrorLog.Errorf("Error in 'deleteConfigTable' for table %v: %v", table, err)
+		return err
+	}
+	e.ErrorLog.Infof("Config deleted for table %v, database: %v", table, database)
+	return nil
+}
+
+/*
+	getConfigTable - returns the table name and config
+*/
+func (e *Engine) getConfigTable(table string) (string, *ConfigTable) {
+	var currentTableName string
+	var tableConfig string
+
+	configTable := new(ConfigTable)
+	tableRow := e.IndexDB.QueryRow("SELECT tablename, config FROM search_config WHERE longlived_name = $1", table)
+
+	err := tableRow.Scan(&currentTableName, &tableConfig)
+	if err != nil {
+		e.ErrorLog.Errorf("Unable to get config for table %v", table)
+		return "", nil
+	}
+
+	err = json.Unmarshal([]byte(tableConfig), &configTable)
+	if err != nil {
+		e.ErrorLog.Errorf("Unable to get config for table %v", table)
+		return "", nil
+	}
+
+	return currentTableName, configTable
+}
+
+/*
+	getSrcTableColumns - returns a list of column names from the source table
+*/
+func (e *Engine) getSrcTableColumns(database, table string) ([]string, error) {
+	mainConfig := e.GetConfig()
+
+	dbConfig, haveDatabase := mainConfig.Databases[database]
+	if !haveDatabase {
+		return nil, errors.New("No 'generic' database config found")
+	}
+
+	db, err := sql.Open(dbConfig.Driver, dbConfig.DSN())
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	rows, err := db.Query(fmt.Sprintf(`SELECT * FROM "%v" LIMIT 1`, table))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return rows.Columns()
+}
+
+/*
+	updateConfigTable - updates config tablename using longLivedName
+*/
+func (e *Engine) updateConfigTable(database, tableName, longLivedName string) error {
+	// If table is not configured for search just return
+	// Nothing to update or check
+	currentTableName, currentTable := e.getConfigTable(longLivedName)
+	if currentTableName == "" && currentTable == nil {
+		return nil
+	}
+
+	columnNames, err := e.getSrcTableColumns(database, tableName)
+	if err != nil {
+		e.ErrorLog.Errorf("updateConfigTable: unable to get source column names for table %v, %v", tableName, err)
 		return err
 	}
 
-	if err = txn.Commit(); err != nil {
+	sort.Strings(columnNames)
+	// Build a new list of only fields contained in the new list of column names
+	newFields := make([]*ConfigField, 0)
+	for _, field := range currentTable.Fields {
+		index := sort.SearchStrings(columnNames, field.Field)
+		if index < len(columnNames) && columnNames[index] == field.Field {
+			newFields = append(newFields, field)
+		}
+	}
+
+	if len(newFields) > 0 {
+		currentTable.Fields = newFields
+		jsonConfig, err := json.Marshal(currentTable)
+		if err != nil {
+			e.ErrorLog.Errorf("updateConfigTable: unable to marshal into json, table %v, %v", tableName, err)
+			return err
+		}
+
+		_, err = e.IndexDB.Exec(`UPDATE search_config SET tablename = $1, config = $2 WHERE longlived_name = $3;`, tableName, jsonConfig, longLivedName)
+		if err != nil {
+			e.ErrorLog.Errorf("updateConfigTable: unable to update search_config for table %v, %v", tableName, err)
+			return err
+		}
+
+		e.ErrorLog.Infof("Config updated for table %v", longLivedName)
+	} else {
+		_, err := e.IndexDB.Exec(`DELETE FROM search_config WHERE longlived_name = $1`, longLivedName)
+		if err != nil {
+			e.ErrorLog.Errorf("updateConfigTable: unable to delete for table %v: %v", tableName, err)
+			return err
+		}
+
+		e.ErrorLog.Infof("Config for table %v has been removed, since none of the originally indexed fields no longer exist", tableName)
+	}
+
+	return nil
+}
+
+/*
+	refreshJSONConfig - updates front end search config after database config update
+*/
+func (e *Engine) refreshJSONConfig() error {
+	if err := e.reloadMergedConfig(); err != nil {
 		return err
 	}
+
+	config := e.GetConfig()
+	if err := config.postJSONLoad(); err != nil {
+		return err
+	}
+
+	// Set index out of date to true after config update.
+	atomic.StoreUint32(&e.isIndexOutOfDate_Atomic, 1)
+
+	// Update front-end config with the new and updated engine config
+	config.updateHttpApiConfig(e)
+
 	return nil
 }
 

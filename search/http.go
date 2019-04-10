@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/IMQS/gzipresponse"
@@ -19,6 +19,13 @@ type jsonResultRoot struct {
 	StaleIndex    bool
 	Items         []*jsonResult
 	Stats         jsonResultStats
+}
+
+// GenericTable represents a full table structure used to save config to the database
+type GenericTable struct {
+	Name          string      // Represents the table's internal name that we expect to change when a generic package is reimported or deleted
+	LongLivedName string      // Represents the table's friendly name that we do not expect to change
+	Table         ConfigTable // Contains a list of indexed fields
 }
 
 type jsonResultStats struct {
@@ -70,8 +77,10 @@ func (e *Engine) RunHttp() error {
 	router := httprouter.New()
 	router.GET("/find/:query", makeRoute(httpFind))
 	router.PUT("/config/:database", makeRoute(httpConfigSet))
+	router.PUT("/rename_table/:database/:external/:internal", makeRoute(httpConfigRenameTable))
 	router.GET("/config", makeRoute(httpConfigGet))
 	router.GET("/ping", makeRoute(httpPing))
+	router.POST("/delete_table/:database/:table", makeRoute(httpConfigDeleteTable))
 
 	e.ErrorLog.Infof("Search is listening on %v", addr)
 
@@ -165,26 +174,59 @@ func httpPing(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.P
 
 func httpConfigSet(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("database")
-	if err := e.updateConfig(dbname, r.Body); err != nil {
-		e.ErrorLog.Errorf(`Unable to update config with error: %v.`, err)
+
+	tables := make([]GenericTable, 0)
+	if err := json.NewDecoder(r.Body).Decode(&tables); err != nil {
+		e.ErrorLog.Errorf(`Error unmarshaling config: %v.`, err)
+		httpSendError(w, err)
+	}
+	if err := e.updateConfig(dbname, tables); err != nil {
+		e.ErrorLog.Errorf(`Unable to update config with error: %v`, err)
 		httpSendError(w, err)
 	}
 
-	if err := e.ReloadMergedConfig(); err != nil {
-		e.ErrorLog.Errorf(`Error updating search config in ReloadMergedConfig: %v.`, err)
+	if err := e.refreshJSONConfig(); err != nil {
+		e.ErrorLog.Errorf(`Failed to update front-end config after update %v`, err)
 		httpSendError(w, err)
 	}
 
-	eConfig := e.GetConfig()
-	if err := eConfig.postJSONLoad(); err != nil {
-		e.ErrorLog.Errorf(`Error updating search config in postJSONLoad: %v.`, err)
+	http.Error(w, "", http.StatusOK)
+}
+
+func httpConfigDeleteTable(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	dbName := ps.ByName("database")
+	table := ps.ByName("table")
+
+	if err := e.deleteConfigTable(dbName, table); err != nil {
+		e.ErrorLog.Errorf(`Failed to delete search config for table %v: %v.`, table, err)
 		httpSendError(w, err)
 	}
 
-	// Set index out of date to true after config update.
-	atomic.StoreUint32(&e.isIndexOutOfDate_Atomic, 1)
+	if err := e.refreshJSONConfig(); err != nil {
+		e.ErrorLog.Errorf(`Failed to update front-end config after delete, table %v: %v.`, table, err)
+		httpSendError(w, err)
+	}
+	http.Error(w, "", http.StatusOK)
+}
 
-	// Update front-end config with the new and updated engine config
-	eConfig.updateHttpApiConfig(e)
+func httpConfigRenameTable(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	dbName := ps.ByName("database")
+	tableName := ps.ByName("internal")
+
+	longLivedName, err := url.QueryUnescape(ps.ByName("external"))
+	if err != nil {
+		e.ErrorLog.Errorf(`Unable to get table external name from request: %v.`, err)
+		httpSendError(w, err)
+	}
+
+	if err := e.updateConfigTable(dbName, tableName, longLivedName); err != nil {
+		e.ErrorLog.Errorf(`Failed to update config after table rename, table %v: %v.`, longLivedName, err)
+		httpSendError(w, err)
+	}
+
+	if err = e.refreshJSONConfig(); err != nil {
+		e.ErrorLog.Errorf(`Failed to update front-end config after table rename table: %v, %v.`, longLivedName, err)
+		httpSendError(w, err)
+	}
 	http.Error(w, "", http.StatusOK)
 }

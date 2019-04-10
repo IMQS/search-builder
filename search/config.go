@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/IMQS/serviceconfigsgo"
+	serviceconfig "github.com/IMQS/serviceconfigsgo"
 	"github.com/pierrec/xxHash/xxHash32"
 )
 
@@ -106,7 +106,10 @@ and stdout is used for the Access log.
 }
 */
 
-const IndexDatabaseName = "index"
+const (
+	indexDatabaseName   = "index"
+	genericDatabaseName = "ImqsServerGeneric"
+)
 
 // Use load() and store() to read and write to an atomicTriState variable.
 type atomicTriState uint32
@@ -663,7 +666,7 @@ func (c *Config) generateConfigForHttpAPI() (string, error) {
 	cfg.Databases = map[string]*ConfigDatabase{}
 
 	for dbName, db := range c.Databases {
-		if dbName == IndexDatabaseName {
+		if dbName == indexDatabaseName {
 			continue
 		}
 		dbCopy := &ConfigDatabase{}
