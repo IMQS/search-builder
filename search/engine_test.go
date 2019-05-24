@@ -36,6 +36,16 @@ func conx_index_postgres() *ConfigDatabase {
 	}
 }
 
+func conxGenericPostgres() *ConfigDatabase {
+	return &ConfigDatabase{
+		Driver:   "postgres",
+		Host:     "localhost",
+		Database: "unit_test_generic",
+		User:     "unit_test_user",
+		Password: "unit_test_password",
+	}
+}
+
 func conx_src_postgres(num int) *ConfigDatabase {
 	conx := &ConfigDatabase{
 		Driver:   "postgres",
@@ -86,6 +96,13 @@ func initDatabases() error {
 	defer root.Close()
 
 	root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conx_index_postgres().Database))
+
+	if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxGenericPostgres().Database)); err != nil {
+		return fmt.Errorf("Unable to drop database %v: %v", conxGenericPostgres().Database, err)
+	}
+	if _, err := root.Exec(fmt.Sprintf("CREATE DATABASE %v OWNER = unit_test_user", conxGenericPostgres().Database)); err != nil {
+		return fmt.Errorf("Unable to create database %v: %v", conxGenericPostgres().Database, err)
+	}
 
 	drop_and_recreate := func(num int) error {
 		if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conx_src_postgres(num).Database)); err != nil {
@@ -216,6 +233,8 @@ func setupCorrectness(t testing.TB, e *Engine) {
 	cfg := &Config{}
 	cfg.Databases = make(map[string]*ConfigDatabase)
 	cfg.Databases["index"] = conx_index_postgres()
+	cfg.Databases[genericDatabaseName] = conxGenericPostgres()
+
 	cfg.Databases["db1"] = conx_src_postgres(1)
 	cfg.Databases["db2"] = conx_src_postgres(2)
 
@@ -371,6 +390,8 @@ func setupPerformance(t testing.TB, e *Engine) {
 	config := &Config{}
 	config.Databases = make(map[string]*ConfigDatabase)
 	config.Databases["index"] = conx_index_postgres()
+
+	config.Databases[genericDatabaseName] = conxGenericPostgres()
 	config.Databases["db1"] = conx_src_postgres(1)
 
 	config.Databases["db1"].Tables = map[string]*ConfigTable{
@@ -388,10 +409,14 @@ func setupPerformance(t testing.TB, e *Engine) {
 }
 
 func setupUpdateConfig(t testing.TB, e *Engine) {
-	db1, _ := connectToDatabases(t)
-	defer db1.Close()
+	genericConfig := conxGenericPostgres()
+	genericDatabase, err := sql.Open(genericConfig.Driver, genericConfig.DSN())
+	if err != nil {
+		t.Fatalf("Unable to connect to database %v: %v", genericConfig.DSN(), err)
+	}
+	defer genericDatabase.Close()
 
-	setupDb1 := `
+	setupDb := `
 	DROP TABLE IF EXISTS sausages;
 	CREATE TABLE sausages (rowid BIGSERIAL PRIMARY KEY, title VARCHAR, meat VARCHAR, farm UUID);
 	INSERT INTO sausages (title, meat, farm) VALUES ('wild pork',    'pork',    '850E97AC-BB00-479E-B2B6-17273F934035');
@@ -400,14 +425,24 @@ func setupUpdateConfig(t testing.TB, e *Engine) {
 	INSERT INTO sausages (title, meat, farm) VALUES ('stock beef',   'beef',    '07EFD697-8697-40E7-AC05-62A23BC6A059');
 	INSERT INTO sausages (title, meat, farm) VALUES ('stock horse',  'horse',   '07EFD697-8697-40E7-AC05-62A23BC6A059');
 	INSERT INTO sausages (title, meat, farm) VALUES ('unknown mix',  'chicken', 'BFCF4C71-FA23-4E2F-B8E0-8429AC9560F8');
+
+	DROP TABLE IF EXISTS boerwors;
+	CREATE TABLE boerwors (rowid BIGSERIAL PRIMARY KEY, title VARCHAR, sauce VARCHAR, farm UUID);
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('wild pork',    'bbq',     '850E97AC-BB00-479E-B2B6-17273F934035');
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('wild chicken', 'tomato',  '850E97AC-BB00-479E-B2B6-17273F934035');
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('stock pork',   'chilli',  '07EFD697-8697-40E7-AC05-62A23BC6A059');
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('stock beef',   'sweet',   '07EFD697-8697-40E7-AC05-62A23BC6A059');
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('stock horse',  'chutney', '07EFD697-8697-40E7-AC05-62A23BC6A059');
+	INSERT INTO boerwors (title, sauce, farm) VALUES ('unknown mix',  'tangy',   'BFCF4C71-FA23-4E2F-B8E0-8429AC9560F8');
 	`
-	ensureExec(t, db1, setupDb1)
+	ensureExec(t, genericDatabase, setupDb)
 
 	config := &Config{}
 	config.Databases = make(map[string]*ConfigDatabase)
 	config.Databases["index"] = conx_index_postgres()
-	config.Databases["db1"] = conx_src_postgres(1)
-	config.Databases["db1"].Tables = map[string]*ConfigTable{}
+
+	config.Databases[genericDatabaseName] = conxGenericPostgres()
+	config.Databases[genericDatabaseName].Tables = map[string]*ConfigTable{}
 	e.Config = config
 }
 
@@ -751,6 +786,7 @@ func setupBuildIndex(t testing.TB, e *Engine) {
 	config := &Config{}
 	config.Databases = make(map[string]*ConfigDatabase)
 	config.Databases["index"] = conx_index_postgres()
+	config.Databases[genericDatabaseName] = conxGenericPostgres()
 	config.Databases["db1"] = conx_src_postgres(1)
 
 	config.Databases["db1"].Tables = map[string]*ConfigTable{
@@ -818,7 +854,7 @@ func TestConcurrency(t *testing.T) {
 	e.Close()
 }
 
-var updateConfigTestData = `[{"name": "sausages", "table": {"friendlyName": "sausages", "feyWords": "sausages",
+var updateConfigTestData = `[{"name": "sausages", "longLivedName": "Sausages", "table": {"friendlyName": "sausages", "fewWords": "sausages",
 	"keywords": "sausages","fields": [{"friendlyName": "title","field": "title","isHumanID": true},{"friendlyName": "meat",
 	"field": "meat","isHumanID": true},{"friendlyName": "farm","field": "farm","isHumanID": true}]}}]`
 
@@ -828,7 +864,10 @@ func TestUpdateConfig(t *testing.T) {
 	}
 	e := setup(t, setupUpdateConfig)
 
-	dbParam := httprouter.Param{Key: "database", Value: "db1"}
+	/********************************
+	TEST SET CONFIG
+	********************************/
+	dbParam := httprouter.Param{Key: "database", Value: genericDatabaseName}
 	reqParams := make([]httprouter.Param, 0)
 	reqParams = append(reqParams, dbParam)
 
@@ -847,6 +886,9 @@ func TestUpdateConfig(t *testing.T) {
 	}
 	fmt.Println("Search config PUT status code", updateResponse.StatusCode)
 
+	/********************************
+	TEST GET CONFIG
+	********************************/
 	getRequest := httptest.NewRequest("GET", "http://localhost/search/config", nil)
 	getW := httptest.NewRecorder()
 
@@ -870,9 +912,65 @@ func TestUpdateConfig(t *testing.T) {
 	fmt.Println("Search config GET status code", getResponse.StatusCode)
 
 	updatedConfig := e.GetConfig()
-	rc := updatedConfig.Databases["db1"].Tables["sausages"].RowCount
+	rc := updatedConfig.Databases[genericDatabaseName].Tables["sausages"].RowCount
 	if rc != 1 {
 		t.Errorf("RowCount of 'sausages' is not correct. expected %v. actual = %v.", 1, rc)
+	}
+
+	/********************************
+	TEST TABLE RENAME CONFIG
+	********************************/
+	renameReqParams := make([]httprouter.Param, 0)
+	renameReqParams = append(renameReqParams, dbParam)
+
+	extTableParam := httprouter.Param{Key: "external", Value: "Sausages"}
+	renameReqParams = append(renameReqParams, extTableParam)
+
+	intTableParam := httprouter.Param{Key: "internal", Value: "boerwors"}
+	renameReqParams = append(renameReqParams, intTableParam)
+
+	renameRequest := httptest.NewRequest("PUT", "http://localhost/search/rename_table", nil)
+	renameW := httptest.NewRecorder()
+
+	httpConfigRenameTable(e, renameW, renameRequest, renameReqParams)
+	renameResponse := renameW.Result()
+
+	// Check response status code, 200 means everything went well
+	if renameResponse.StatusCode != http.StatusOK {
+		t.Errorf("Error in table_rename, expected %v, actual = %v", http.StatusOK, updateResponse.StatusCode)
+	}
+	fmt.Println("Table config rename PUT status code", renameResponse.StatusCode)
+
+	/********************************
+	TEST DELETE TABLE CONFIG
+	********************************/
+	delRequestParams := make([]httprouter.Param, 0)
+	delRequestParams = append(delRequestParams, dbParam)
+
+	delTableParam := httprouter.Param{Key: "table", Value: "sausages"}
+	delRequestParams = append(delRequestParams, delTableParam)
+
+	deleteRequest := httptest.NewRequest("POST", "http://localhost/search/delete_table", nil)
+	deleteW := httptest.NewRecorder()
+
+	// Delete config
+	httpConfigDeleteTable(e, deleteW, deleteRequest, delRequestParams)
+	deleteResponse := deleteW.Result()
+
+	// Check response status code, 200 means everything went well
+	if deleteResponse.StatusCode != http.StatusOK {
+		t.Errorf("Error deleting config, expected %v, actual = %v", http.StatusOK, deleteResponse.StatusCode)
+	}
+
+	fmt.Println("Search config DELETE status code", deleteResponse.StatusCode)
+
+	//Try delete config again
+	httpConfigDeleteTable(e, deleteW, deleteRequest, delRequestParams)
+	deleteResponse = deleteW.Result()
+
+	// Check response status code, 200 means nothing to delete
+	if deleteResponse.StatusCode != http.StatusOK {
+		t.Errorf("Error deleting config, expected %v, actual = %v", http.StatusOK, deleteResponse.StatusCode)
 	}
 
 	e.Close()

@@ -27,7 +27,7 @@ func BenchmarkReads(indexDB *sql.DB) {
 	defer tx.Commit()
 
 	start := time.Now()
-	var totalResults int64 = 0
+	var totalResults int64
 	numQuery := 5000
 	for i := 0; i < numQuery; i++ {
 		low := fmt.Sprintf("01%04v", i)

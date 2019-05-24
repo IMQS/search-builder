@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/IMQS/cli"
-	"github.com/IMQS/search/search"
 	"github.com/IMQS/gowinsvc/service"
+	"github.com/IMQS/search/search"
 	_ "github.com/lib/pq"
 )
 
