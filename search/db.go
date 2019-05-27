@@ -198,26 +198,39 @@ func createMigrations(genericCfg *ConfigDatabase) []migration.Migrator {
 		}
 		defer genericDB.Close()
 
-		metaRows, err := genericDB.Query(`SELECT "TableNameInternal", "TableNameExternal" FROM "ImqsMetaTable"`)
-		if err != nil {
+		// Check if ImqsMetaTable exists.
+		// This check was added for unit tests.
+		// However, I think it might also prove useful in future, when services are started up on a clean server.
+		// For example, imagine a virgin server, with no databases created yet. If the search service starts up before
+		// the Generic service, then the ImqsMetaTable won't exist yet. So this seems like a legitimate check to
+		// keep in here.
+		var nMetaTable int64
+		if err := genericDB.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ImqsMetaTable'`).Scan(&nMetaTable); err != nil {
 			return err
 		}
-		defer metaRows.Close()
 
-		for metaRows.Next() {
-			var internalName, externalName string
-			if err := metaRows.Scan(&internalName, &externalName); err != nil {
+		if nMetaTable == 1 {
+			metaRows, err := genericDB.Query(`SELECT "TableNameInternal", "TableNameExternal" FROM "ImqsMetaTable"`)
+			if err != nil {
 				return err
 			}
-			migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
-		}
-		metaRows.Close()
+			defer metaRows.Close()
 
-		// On InfraQA, we discovered that many rows inside search_config referred to tables that were no longer present in the Generic DB.
-		// This is expected, because until now, we've had no way of keeping the search_config table up to date, when Generic imports
-		// were added or modified.
-		// Our solution is to just get rid of the invalid entries
-		migrationSQL += `DELETE FROM search_config WHERE longlived_name IS NULL;`
+			for metaRows.Next() {
+				var internalName, externalName string
+				if err := metaRows.Scan(&internalName, &externalName); err != nil {
+					return err
+				}
+				migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
+			}
+			metaRows.Close()
+
+			// On InfraQA, we discovered that many rows inside search_config referred to tables that were no longer present in the Generic DB.
+			// This is expected, because until now, we've had no way of keeping the search_config table up to date, when Generic imports
+			// were added or modified.
+			// Our solution is to just get rid of the invalid entries
+			migrationSQL += `DELETE FROM search_config WHERE longlived_name IS NULL;`
+		}
 
 		migrationSQL += `ALTER TABLE search_config ADD CONSTRAINT search_config_pkey PRIMARY KEY (dbname, longlived_name);`
 

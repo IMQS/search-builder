@@ -434,6 +434,11 @@ func setupUpdateConfig(t testing.TB, e *Engine) {
 	INSERT INTO boerwors (title, sauce, farm) VALUES ('stock beef',   'sweet',   '07EFD697-8697-40E7-AC05-62A23BC6A059');
 	INSERT INTO boerwors (title, sauce, farm) VALUES ('stock horse',  'chutney', '07EFD697-8697-40E7-AC05-62A23BC6A059');
 	INSERT INTO boerwors (title, sauce, farm) VALUES ('unknown mix',  'tangy',   'BFCF4C71-FA23-4E2F-B8E0-8429AC9560F8');
+
+	DROP TABLE IF EXISTS "ImqsMetaTable";
+	CREATE TABLE "ImqsMetaTable" (rowid BIGSERIAL NOT NULL PRIMARY KEY, "PackageName" VARCHAR, "TableNameInternal" VARCHAR, "TableNameExternal" VARCHAR);
+	INSERT INTO "ImqsMetaTable" ("PackageName", "TableNameInternal", "TableNameExternal") VALUES ('foo', 'sausages', 'The Sausage');
+	INSERT INTO "ImqsMetaTable" ("PackageName", "TableNameInternal", "TableNameExternal") VALUES ('bar', 'boerwors', 'The Afrikaner Sausage');
 	`
 	ensureExec(t, genericDatabase, setupDb)
 
