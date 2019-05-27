@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/migration"
-	"github.com/lib/pq"
 )
 
 // At some point we're going to need to make this configurable
@@ -190,42 +189,36 @@ func createMigrations(genericCfg *ConfigDatabase) []migration.Migrator {
 		We can update or delete any search_config using long_lived_name field as a reference
 	*/
 	migrations = append(migrations, func(tx migration.LimitedTx) error {
-		tableNames := make([]string, 0)
-		nameRows, err := tx.Query(`SELECT tablename FROM search_config`)
+		migrationSQL := `ALTER TABLE search_config DROP CONSTRAINT search_config_pkey;`
+		migrationSQL += `ALTER TABLE search_config ADD COLUMN longlived_name VARCHAR;`
+
+		genericDB, err := sql.Open(genericCfg.Driver, genericCfg.DSN())
 		if err != nil {
 			return err
 		}
-		defer nameRows.Close()
-		for nameRows.Next() {
-			var name string
-			if err := nameRows.Scan(&name); err != nil {
-				return err
-			}
-			tableNames = append(tableNames, name)
+		defer genericDB.Close()
+
+		metaRows, err := genericDB.Query(`SELECT "TableNameInternal", "TableNameExternal" FROM "ImqsMetaTable"`)
+		if err != nil {
+			return err
 		}
+		defer metaRows.Close()
 
-		migrationSQL := `ALTER TABLE search_config DROP CONSTRAINT search_config_pkey; ALTER TABLE search_config ADD COLUMN longlived_name VARCHAR;`
-		if len(tableNames) > 0 {
-			genericDB, err := sql.Open(genericCfg.Driver, genericCfg.DSN())
-			if err != nil {
+		for metaRows.Next() {
+			var internalName, externalName string
+			if err := metaRows.Scan(&internalName, &externalName); err != nil {
 				return err
 			}
-			defer genericDB.Close()
-
-			metaRows, err := genericDB.Query(`SELECT "TableNameInternal", "TableNameExternal" FROM "ImqsMetaTable" WHERE "TableNameInternal" = any($1)`, pq.Array(tableNames))
-			if err != nil {
-				return err
-			}
-			defer metaRows.Close()
-
-			for metaRows.Next() {
-				var internalName, externalName string
-				if err := metaRows.Scan(&internalName, &externalName); err != nil {
-					return err
-				}
-				migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
-			}
+			migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
 		}
+		metaRows.Close()
+
+		// On InfraQA, we discovered that many rows inside search_config referred to tables that were no longer present in the Generic DB.
+		// This is expected, because until now, we've had no way of keeping the search_config table up to date, when Generic imports
+		// were added or modified.
+		// Our solution is to just get rid of the invalid entries
+		migrationSQL += `DELETE FROM search_config WHERE longlived_name IS NULL;`
+
 		migrationSQL += `ALTER TABLE search_config ADD CONSTRAINT search_config_pkey PRIMARY KEY (dbname, longlived_name);`
 
 		_, err = tx.Exec(migrationSQL)
