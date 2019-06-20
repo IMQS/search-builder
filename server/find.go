@@ -1,4 +1,4 @@
-package search
+package server
 
 import (
 	"database/sql"
@@ -60,6 +60,7 @@ type FindResult struct {
 	RawDBRowCount  int64
 	NumValidRows   int
 	Rows           []*FindResultRow
+	RowKey         string
 	StaleIndex     bool
 }
 

@@ -1,7 +1,5 @@
 module github.com/IMQS/search
 
-go 1.12
-
 require (
 	github.com/BurntSushi/migration v0.0.0-20140125045755-c45b897f1335
 	github.com/IMQS/cli v0.0.0-20151022082634-156324308096

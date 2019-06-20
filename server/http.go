@@ -1,4 +1,4 @@
-package search
+package server
 
 import (
 	"encoding/json"
@@ -51,6 +51,7 @@ type jsonResult struct {
 	ItemType       string
 	HumanIDs       []string
 	Row            string
+	RowKey         string
 	Rank           float64
 	Values         map[string]string
 	RelatedRecords []jsonRelatedRow
@@ -123,13 +124,15 @@ func httpFind(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.P
 			TimeSort:       results.TimeSort.Seconds(),
 		}
 		for _, r := range results.Rows {
+			table := config.tableConfigFromName(r.Table)
 			jr := &jsonResult{
 				Database: r.Table.DBOnly(),
 				Table:    r.Table.TableOnly(),
 				TableID:  int(r.SrcTab),
-				ItemType: config.tableConfigFromName(r.Table).FriendlyName,
+				ItemType: table.FriendlyName,
 				HumanIDs: config.getTableHumanIDsFromName(r.Table),
 				Row:      strconv.FormatInt(r.Row, 10),
+				RowKey:   table.IndexField,
 				Rank:     float64(r.Rank),
 				Values:   r.Values,
 			}

@@ -6,3 +6,5 @@ pkg/
 *.iml
 .hg
 /imqssearch.exe
+search
+search.exe

@@ -1,7 +1,6 @@
-/*
-Package search implements a database text search engine appropriate to IMQS data.
+# Package search implements a database text search engine appropriate to IMQS data.
 
-Concepts
+## Concepts
 
 In a nutshell, the indexer reads strings from the tables that are being indexed. These strings
 are then split into tokens. The tokens are inserted into one giant search index table.
@@ -10,36 +9,36 @@ out of the search query are then used to perform a prefix match against all of t
 the index. Because our tokens are fairly unique, we maintain reasonably logarithmic growth
 in query time, as our index grows.
 
-Query Strings
+## Query Strings
 
 The "Find" API accepts a single string. That string is tokenized, and those tokens are
 searched for inside our index. Generally, a search query is just a plain old string. However,
 there are two special instructions that you can embed inside this string. Those instructions
 are (by example)
-
-	regular search terms <fields:db1.roads.streetname,db2.addresses.address>
-
+```
+regular search terms <fields:db1.roads.streetname,db2.addresses.address>
+```
 The first example, above, illustrates using a "fields:" instruction to restrict the fields that are searched.
 
 The lists within the special instructions are separated by a comma. A pipe character (|) can be
 used as an escape character. You need to escape commas and the greater than symbol. An instruction may
-appear only once - ie you may not have more than one <fields:...> instruction.
+appear only once - ie you may not have more than one `<fields:...>` instruction.
 
 The 'fields' restriction limits the source fields that you want to search in. If you don't
 specify a 'fields' restriction, then all fields are searched.
 
 The second instruction available is the "pairs" instruction:
-
-	regular search terms <pairs:db1.pipes.type=COPPER,db1.pipes.type=BRASS,db2.sealer.material=COPPER>
-
+```
+regular search terms <pairs:db1.pipes.type=COPPER,db1.pipes.type=BRASS,db2.sealer.material=COPPER>
+```
 In the above example, we have specified three key-value pairs. Key-value pairs are matched in an OR manner.
 In other words, if any of the key-value pairs match, then the record is considered a legal result.
 Key-value pairs must match the entire string (ie not just a prefix match), but they are case insensitive.
 
 To perform a 'pairs' prefix match instruction use '=~':
-
-	regular search terms <pairs:db1.pipes.type=~COPP,db1.pipes.type=~BRA,db2.sealer.material=COPPER>
-
+```
+regular search terms <pairs:db1.pipes.type=~COPP,db1.pipes.type=~BRA,db2.sealer.material=COPPER>
+```
 In the above example, we have specified three key-value pairs, the first two of which allow prefix matching.
 I.e. db1.pipes.type fields will match the pattern COPP% and db1.pipes.type will match BRA% while
 db2.sealer.material must match COPPER exactly. Note again that all matches are case insensitive.
@@ -48,23 +47,23 @@ Ambiguity caused by 'fields' and 'pairs' instructions:
 
 There is inherent ambiguity if one specifies both 'fields' and 'pairs' instructions. For example, consider
 the following table:
-
-	diameter  type   length
-	     150    FH       30
-	     100     V       30
-	     110     V       50
-
+```
+diameter  type   length
+     150    FH       30
+     100     V       30
+     110     V       50
+```
 Now imagine this search query
-
-	110 <pairs:db1.pipes.type=V> <fields:db1.pipes.diameter>
-
+```
+110 <pairs:db1.pipes.type=V> <fields:db1.pipes.diameter>
+```
 The user is looking for the string "110", provided the record found has the property "type=V". The query string
 explicitly says to look inside the diameter field, where we find 110, so all is well.
 
 Now consider this query
-
-	110 <pairs:db1.pipes.type=V>
-
+```
+110 <pairs:db1.pipes.type=V>
+```
 The user said that he wants to search for the string "110", provided the record found has the property "type=V".
 However, this IMPLIES that he wants to limit his search to the table "pipes", because the pair constraint can
 only be satisfied by records from the pipes table. So, the implication of this is that the user wants to search
@@ -88,7 +87,7 @@ One more thing that should be said about pairs: If a search contains only <pairs
 then the result set contains all records that match the <pairs> constraints. No result ranking is performed
 in this case, because there is nothing on which to rank.
 
-Table Relationships
+## Table Relationships
 
 This system supports joining tables together by specifying relationships between them. For example,
 imagine a table called Sausages, and another table called Farms. Assume every sausage is made with meat from
@@ -98,7 +97,7 @@ table, and somehow combine that information to produce a higher score for all sa
 which contain meat from free range farms. This implies that the ranking comes not from a single table, but
 from multiple tables, after joining their records together.
 
-Table Relationship Internals
+### Table Relationship Internals
 
 To illustrate how the table joining system works, we can start by describing how one configures related tables.
 Firstly, we express relationships between tables by saying that a table is related to another table with a
@@ -114,13 +113,13 @@ edge between any two nodes.
 Now that we have the inter-table relationships, we can think of them in terms of a graph structure.
 
 For the remainer of this chapter, we will talk in terms of the following example graph:
-
-	(A) --- (B)
-	 |     /
-	 |   /
-	 | /
-	(C) *--- (E)
-
+```
+(A) --- (B)
+ |     /
+ |   /
+ | /
+(C) *--- (E)
+```
 In the above example, there are three tables A,B,C, which are all related to one another with a OneToOne relationship.
 This kind of pattern appears in a database where you've taken one logical table and split it up into three
 different tables, purely for the sake of keeping table widths down.
@@ -163,18 +162,16 @@ table E has order 4. In reality the order will be effectively random, but to kee
 we make our ordering here simple.
 
 The srcrow tuples of any given table are:
-
-	* The primary table that is being indexed
-	* All related tables, in descending order, but only if:
-	    * The relationship is OneToOne, and their order is higher than the primary table's order, or...
-	    * The relationship is ManyToOne
+* The primary table that is being indexed
+* All related tables, in descending order, but only if:
+	* The relationship is OneToOne, and their order is higher than the primary table's order, or...
+	* The relationship is ManyToOne
 
 The tuple set for the above example is:
-
-	* A: A, B, C    B and C have higher order than A, so they are both included
-	* B: B, C       C has higher order than B, so it is included
-	* C: C, E       C to E is ManyToOne, to E is included
-	* E: E          E to C is OneToMany, so C is not included
+* A: A, B, C    B and C have higher order than A, so they are both included
+* B: B, C       C has higher order than B, so it is included
+* C: C, E       C to E is ManyToOne, to E is included
+* E: E          E to C is OneToMany, so C is not included
 
 This 'tuple set' ends up in the search_index table, inside the 'srcrows' field, which is a binary blob
 field, capable of storing any number of srcrow values. We encode the srcrow values using the
@@ -201,7 +198,7 @@ higher than the primary table's order" is removed. This is necessary in order to
 list of records are related records from our API, regardless of whether the related records played a
 part in the search ranking.
 
-Autovacuum
+## Autovacuum
 
 We are forced by our history to run some servers on spinning disc hard drives. When the autovacuum decides to run
 on a hard drive, it makes the server unusable. For this reason, we disable autovacuum, and instead
@@ -209,7 +206,7 @@ run vacuum on a 24-hour schedule, at night time. This won't be good enough forev
 it's OK, since our server installations serve a particular demographic. Hopefully by the time
 "nightly" runs are no longer sufficient, we will have moved off hard drives completely.
 
-Postgres Table Statistics
+## Postgres Table Statistics
 
 Occasionally we see that Postgres table statistics are reset. It's not clear how this happens. The Postgres
 documention mentions nothing about statistics being automatically reset, but there certainly are functions that
@@ -221,7 +218,7 @@ state drives, but it can produce a surprise system slowdown if it occurs on a ha
 
 Our best bet for why this happens occasionally is due to people backing up and restoring Postgres databases.
 
-Single Digit Tokens
+## Single Digit Tokens
 
 Normally, we enforce a minimum length on tokens, and this minimum length is 2 characters. Single character
 tokens are discarded, and never end up in the index. However, when adding support for addresses, we realized
@@ -230,7 +227,7 @@ into our config specification, which allows one to specify the minimum token len
 we set this to 1. This works, but it's a bad solution, because it causes the index to bloat with gigantic
 sets of numeric street number tokens.
 
-What should we do instead?
+### What should we do instead?
 
 A much better solution is to build domain-specific knowledge into our indexer and finder. Let's consider
 the indexing of addresses as an example.
@@ -253,7 +250,7 @@ we are now indexing far more unique things, than if we were indexing "5", "113",
 One thing that we would need to do for something like address searches is spelling correction. Street names
 could be just another thing that we index.
 
-Performance
+## Performance
 
 2015/09/15 Jeremy -
 ExcludeEntireStringFromResult Functionality: This is used when inserting fields into the searchIndex table
@@ -264,25 +261,26 @@ to do is so we can find records which contains single charaters in the database.
 "i-74e" and "74e" and it will return result "I-74E" where it previously didnt.
 
 See the stats below on what the impact will be on the searchIndex table(Sample data).
-
+```
 ExcludeEntireStringFromResult : true
-Table Size			84 MB
-Indexes Size		159 MB
-
+Table Size      84 MB
+Indexes Size    159 MB
+```
+```
 ExcludeEntireStringFromResult : false
-Table Size			126 MB
-Indexes Size		236 MB
-
+Table Size      126 MB
+Indexes Size    236 MB
+```
 See the stats below for the search query(Sample data):
-
+```
 ExcludeEntireStringFromResult : true
 Find(i-74e): 10 results in 93 ms true
 Find(i-74e): 10 results in 91 ms true
 Find(i-74e): 10 results in 95 ms true
-
+```
+```
 ExcludeEntireStringFromResult : false
 Find(i-74e): 10 results in 93 ms false
 Find(i-74e): 10 results in 96 ms false
 Find(i-74e): 10 results in 99 ms false
-*/
-package search
+```
