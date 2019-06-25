@@ -129,7 +129,7 @@ func httpFind(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.P
 				Table:       r.Table.TableOnly(),
 				TableID:     int(r.SrcTab),
 				HumanIDs:    config.getTableHumanIDsFromName(r.Table),
-				RowKey:      strconv.FormatInt(r.RowKey, 10),
+				RowKey:      strconv.FormatInt(r.Row, 10),
 				RowKeyField: table.IndexField,
 				Rank:        float64(r.Rank),
 				Values:      r.Values,
@@ -137,7 +137,7 @@ func httpFind(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.P
 			for _, rel := range r.RelatedRecords {
 				jr.RelatedRecords = append(jr.RelatedRecords, jsonRelatedRow{
 					TableID: int(rel.SrcTab),
-					RowKey:  rel.RowKey,
+					RowKey:  rel.Row,
 				})
 			}
 			res.Items = append(res.Items, jr)

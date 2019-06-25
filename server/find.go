@@ -65,24 +65,24 @@ type FindResult struct {
 
 type FindResultRelatedRow struct {
 	SrcTab tableID
-	RowKey int64
+	Row    int64
 }
 
 type FindResultRow struct {
 	Table          TableFullName
 	SrcTab         tableID
-	RowKey         int64
+	Row            int64
 	Rank           uint16
 	Values         map[string]string      // Arbitrary field:value pairs from this row that we decide to return with the search results
 	RelatedRecords []FindResultRelatedRow `json:",omitempty"`
 }
 
 func (r *FindResultRow) hashKey() string {
-	return resultRowHashKey(r.SrcTab, r.RowKey)
+	return resultRowHashKey(r.SrcTab, r.Row)
 }
 
 func (r *FindResultRow) copyFromResultRow(src *resultRow) {
-	r.RowKey = src.srcRowKey()
+	r.Row = src.primarySrcRow()
 	r.SrcTab = src.srctab
 	r.Rank = src.rank
 }
@@ -150,7 +150,7 @@ type resultRow struct {
 }
 
 // Unpack and return the first int64 in srcrows
-func (r *resultRow) srcRowKey() int64 {
+func (r *resultRow) primarySrcRow() int64 {
 	val, _ := unpackNextRow(r.srcrows[:])
 	return val
 }
@@ -216,7 +216,7 @@ func (r *resultRow) mergeRelatedIntoSelf(ntokens int, related *resultRow) {
 }
 
 func (r *resultRow) debugRank(tokens []string, queryHasPairs bool) {
-	fmt.Printf("%v %v %v\n", r.srctab, r.srcRowKey(), r.isValidResult(tokens, queryHasPairs))
+	fmt.Printf("%v %v %v\n", r.srctab, r.primarySrcRow(), r.isValidResult(tokens, queryHasPairs))
 	for i := 0; i < len(tokens); i++ {
 		switch r.tokens.get(i) {
 		case tokenStateKeywordMatch:
@@ -230,7 +230,7 @@ func (r *resultRow) debugRank(tokens []string, queryHasPairs bool) {
 }
 
 func (r *resultRow) hashKey() string {
-	return resultRowHashKey(r.srctab, r.srcRowKey())
+	return resultRowHashKey(r.srctab, r.primarySrcRow())
 }
 
 func resultRowHashKey(tab tableID, row int64) string {
@@ -246,7 +246,7 @@ func (a resultRowByRank) Less(i, j int) bool {
 	jRank := a[j].rank
 	if iRank == jRank {
 		if a[i].srctab == a[j].srctab {
-			return a[i].srcRowKey() > a[j].srcRowKey()
+			return a[i].primarySrcRow() > a[j].primarySrcRow()
 		} else {
 			return a[i].srctab > a[j].srctab
 		}
@@ -264,7 +264,7 @@ func (a findResultRowByTable) Less(i, j int) bool {
 	}
 	// The row ordering here is tightly coupled to the use of ORDER BY in our
 	// SQL statement that retrieves records for this table
-	return a[i].RowKey < a[j].RowKey
+	return a[i].Row < a[j].Row
 }
 
 type cachedSubjugate struct {
@@ -536,7 +536,7 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 		// Add all related rows that are not already in the result set
 		for _, prim := range res.Rows {
 			for _, rel := range prim.RelatedRecords {
-				key := resultRowHashKey(rel.SrcTab, rel.RowKey)
+				key := resultRowHashKey(rel.SrcTab, rel.Row)
 				if !rowIsInResult[key] {
 					dst := &FindResultRow{}
 					if src, ok := foundRows[key]; !ok {
@@ -544,7 +544,7 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 						// set that we pulled out of the index. i.e. it is simply a related table, but
 						// wasn't involved in the query.
 						dst.SrcTab = rel.SrcTab
-						dst.RowKey = rel.RowKey
+						dst.Row = rel.Row
 					} else {
 						// This path is hit when the related record was found via one of it's tokens. In this
 						// case the related record has a rank, so we include it. But we probably shouldn't, because
@@ -756,7 +756,7 @@ func (e *Engine) addValuesToResults(results []*FindResultRow, config *Config) er
 		query = query[0 : len(query)-1]
 		query += fmt.Sprintf(" FROM %v WHERE %v in (", esc(queue[0].Table.TableOnly()), esc(config.IndexField))
 		for _, q := range queue {
-			query += fmt.Sprintf("%v,", q.RowKey)
+			query += fmt.Sprintf("%v,", q.Row)
 		}
 		query = query[0 : len(query)-1]
 		query += fmt.Sprintf(") ORDER BY %v", esc(config.IndexField)) // The ORDER BY here is tightly coupled to the sort order of findResultRowByTable

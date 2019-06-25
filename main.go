@@ -76,9 +76,9 @@ func exec(cmdName string, args []string, options cli.OptionSet) int {
 		config := engine.GetConfig()
 		res, err = engine.Find(query, config)
 		if err == nil {
-			fmt.Printf("%-20v %8v %5v\n", "Table", "RowKey", "Rank")
+			fmt.Printf("%-20v %8v %5v\n", "Table", "Row", "Rank")
 			for _, r := range res.Rows {
-				fmt.Printf("%-20v %8v %5v\n", r.Table, r.RowKey, r.Rank)
+				fmt.Printf("%-20v %8v %5v\n", r.Table, r.Row, r.Rank)
 			}
 		}
 	case "rebuild":
