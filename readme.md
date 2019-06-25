@@ -24,4 +24,4 @@ password search_test. The user must be able to create databases.
 	go test github.com/IMQS/search/search -db_postgres
 
 # Docker Build
-sudo docker build --build-arg ssh_pvt_key="`cat ~/.ssh/github_rsa`" -t imqs/search:master .
+sudo docker build --build-arg ssh_pvt_key="`cat ~/.ssh/id_rsa`" -t imqs/search:master .
