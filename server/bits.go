@@ -1,4 +1,4 @@
-package search
+package server
 
 // Utilities for packing/unpacking values that are less than 8 bits.
 

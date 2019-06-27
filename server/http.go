@@ -1,4 +1,4 @@
-package search
+package server
 
 import (
 	"encoding/json"
@@ -41,17 +41,17 @@ type jsonResultStats struct {
 
 type jsonRelatedRow struct {
 	TableID int
-	Row     int64
+	RowKey  int64
 }
 
 type jsonResult struct {
 	Database       string
 	Table          string
 	TableID        int
-	ItemType       string
-	HumanIDs       []string
-	Row            string
-	Rank           float64
+	HumanIDs       []string // Friendly names for the DB columns. The `FriendlyName` field in `Fields` in the config file makes up this value
+	RowKey         string   // Unique id (value) associated with this result
+	RowKeyField    string   // Column name of the unique id field associated with this result
+	Rank           float64  // Level of relevance to search request
 	Values         map[string]string
 	RelatedRecords []jsonRelatedRow
 }
@@ -123,20 +123,21 @@ func httpFind(e *Engine, w http.ResponseWriter, r *http.Request, ps httprouter.P
 			TimeSort:       results.TimeSort.Seconds(),
 		}
 		for _, r := range results.Rows {
+			table := config.tableConfigFromName(r.Table)
 			jr := &jsonResult{
-				Database: r.Table.DBOnly(),
-				Table:    r.Table.TableOnly(),
-				TableID:  int(r.SrcTab),
-				ItemType: config.tableConfigFromName(r.Table).FriendlyName,
-				HumanIDs: config.getTableHumanIDsFromName(r.Table),
-				Row:      strconv.FormatInt(r.Row, 10),
-				Rank:     float64(r.Rank),
-				Values:   r.Values,
+				Database:    r.Table.DBOnly(),
+				Table:       r.Table.TableOnly(),
+				TableID:     int(r.SrcTab),
+				HumanIDs:    config.getTableHumanIDsFromName(r.Table),
+				RowKey:      strconv.FormatInt(r.Row, 10),
+				RowKeyField: table.IndexField,
+				Rank:        float64(r.Rank),
+				Values:      r.Values,
 			}
 			for _, rel := range r.RelatedRecords {
 				jr.RelatedRecords = append(jr.RelatedRecords, jsonRelatedRow{
 					TableID: int(rel.SrcTab),
-					Row:     rel.Row,
+					RowKey:  rel.Row,
 				})
 			}
 			res.Items = append(res.Items, jr)

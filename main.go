@@ -8,7 +8,7 @@ import (
 
 	"github.com/IMQS/cli"
 	"github.com/IMQS/gowinsvc/service"
-	"github.com/IMQS/search/search"
+	"github.com/IMQS/search/server"
 	_ "github.com/lib/pq"
 )
 
@@ -29,7 +29,7 @@ func main() {
 func exec(cmdName string, args []string, options cli.OptionSet) int {
 	configFile := options["c"]
 
-	engine := search.Engine{}
+	engine := server.Engine{}
 	engine.ConfigFile = configFile
 
 	err := engine.LoadConfigFromFile()
@@ -69,8 +69,8 @@ func exec(cmdName string, args []string, options cli.OptionSet) int {
 			run()
 		}
 	case "find":
-		var res *search.FindResult
-		query := &search.Query{
+		var res *server.FindResult
+		query := &server.Query{
 			Query: strings.Join(args, " "),
 		}
 		config := engine.GetConfig()
@@ -86,9 +86,9 @@ func exec(cmdName string, args []string, options cli.OptionSet) int {
 			fmt.Printf("Performing auto rebuild. See log for details.\n")
 			err = engine.AutoRebuild()
 		} else {
-			tables := []search.TableFullName{}
+			tables := []server.TableFullName{}
 			for _, a := range args {
-				tables = append(tables, search.TableFullName(a))
+				tables = append(tables, server.TableFullName(a))
 			}
 			err = engine.BuildIndex(tables, false)
 		}

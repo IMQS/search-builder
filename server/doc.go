@@ -1,5 +1,5 @@
 /*
-Package search implements a database text search engine appropriate to IMQS data.
+Package server implements a database text search engine appropriate to IMQS data.
 
 Concepts
 
@@ -285,4 +285,4 @@ Find(i-74e): 10 results in 93 ms false
 Find(i-74e): 10 results in 96 ms false
 Find(i-74e): 10 results in 99 ms false
 */
-package search
+package server
