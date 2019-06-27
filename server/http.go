@@ -49,8 +49,8 @@ type jsonResult struct {
 	Table          string
 	TableID        int
 	HumanIDs       []string // Friendly names for the DB columns. The `FriendlyName` field in `Fields` in the config file makes up this value
-	RowKey         string   // Unique id (primary key value) associated with this result
-	RowKeyField    string   // Column name of the unique id field (primary key) associated with this result
+	RowKey         string   // Unique id (value) associated with this result
+	RowKeyField    string   // Column name of the unique id field associated with this result
 	Rank           float64  // Level of relevance to search request
 	Values         map[string]string
 	RelatedRecords []jsonRelatedRow
