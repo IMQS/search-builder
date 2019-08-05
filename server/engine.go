@@ -370,7 +370,7 @@ func (e *Engine) getSrcTableColumns(database, table string) ([]string, error) {
 
 	dbConfig, haveDatabase := mainConfig.Databases[database]
 	if !haveDatabase {
-		return nil, errors.New("No 'generic' database config found")
+		return nil, fmt.Errorf("No '%v' database config found", database)
 	}
 
 	db, err := sql.Open(dbConfig.Driver, dbConfig.DSN())
