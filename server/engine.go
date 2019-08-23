@@ -199,16 +199,27 @@ func (e *Engine) Find(query *Query, config *Config) (*FindResult, error) {
 	if atomicMaxUint32(&e.maxFindOpsInProgress, numFindOps) {
 		e.ErrorLog.Infof("Max simultaneous find ops in progress: %v", atomic.LoadUint32(&e.maxFindOpsInProgress))
 	}
+
+	// something is wrong if we go above 50 pending requests -> switch to detailed logging
+	if numFindOps > 50 {
+		e.ErrorLog.Error("Max simultaneous find ops are above threshold: switching to debug log level")
+		e.ErrorLog.Level = log.Debug
+	}
+
 	start := time.Now()
 	res, err := e.findWithManualJoin(query, config)
 	if err != nil {
 		return nil, err
 	}
+	e.ErrorLog.Debug("engine.go: e.findWithManualJoin done")
+
 	auxStart := time.Now()
 	err = e.addValuesToResults(res.Rows, config)
 	if err != nil {
 		return nil, err
 	}
+	e.ErrorLog.Debug("engine.go: e.addValuesToResults done")
+
 	res.TimeAuxFetch = time.Now().Sub(auxStart)
 	res.TimeTotal = time.Now().Sub(start)
 	return res, err
@@ -482,11 +493,14 @@ func (e *Engine) getFieldID(name string, createIfNotExist bool) (fieldID, error)
 
 // Lookup a string in 'search_nametable', and optionally create a new ID if it doesn't already exist
 func (e *Engine) getIDFromName(name string, createIfNotExist bool) (uint16, error) {
+	e.ErrorLog.Debugf("engine.go: getIDFromName: %v", name)
+
 	e.nameToIDLock.Lock()
 	defer e.nameToIDLock.Unlock()
 	if id, ok := e.nameToID[name]; ok {
 		return id, nil
 	}
+	e.ErrorLog.Debugf("engine.go: getIDFromName (not found in cache): %v", name)
 
 	fetch_from_db := func() (uint16, error) {
 		var id uint32
@@ -534,11 +548,14 @@ func (e *Engine) getNameFromFieldID(id fieldID) (string, error) {
 }
 
 func (e *Engine) getNameFromID(id uint16) (string, error) {
+	e.ErrorLog.Debugf("engine.go: getNameFromID: %v", id)
+
 	e.idToNameLock.Lock()
 	defer e.idToNameLock.Unlock()
 	if name, ok := e.idToName[id]; ok {
 		return name, nil
 	}
+	e.ErrorLog.Debugf("engine.go: getNameFromID (not in cache): %v", id)
 
 	var name string
 	if err := e.IndexDB.QueryRow("SELECT name FROM search_nametable WHERE id = $1", id).Scan(&name); err != nil {
@@ -549,12 +566,15 @@ func (e *Engine) getNameFromID(id uint16) (string, error) {
 }
 
 func (e *Engine) getTableFromID(tabID tableID) (*ConfigTable, error) {
+	e.ErrorLog.Debugf("engine.go: getTableFromID: %v", tabID)
+
 	e.tableIDToTableLock.Lock()
 	defer e.tableIDToTableLock.Unlock()
 	tableConfig, exist := e.tableIDToTable[tabID]
 	if exist {
 		return tableConfig, nil
 	}
+	e.ErrorLog.Debugf("engine.go: getTableFromID (not found in cache): %v", tabID)
 
 	name, err := e.getNameFromTableID(tabID)
 	if err != nil {
@@ -565,6 +585,7 @@ func (e *Engine) getTableFromID(tabID tableID) (*ConfigTable, error) {
 	if tableConfig == nil {
 		return nil, errTableNotConfigured
 	}
+	e.ErrorLog.Debugf("engine.go: getTableFromID (found tableConfig): %v", tabID)
 
 	e.tableIDToTable[tabID] = tableConfig
 	return tableConfig, nil
@@ -595,18 +616,24 @@ func (e *Engine) deleteTableInfo(tableNames []TableFullName) error {
 }
 
 func (e *Engine) getSrcDB(dbName string, config *Config) (*sql.DB, error) {
+	e.ErrorLog.Debugf("engine.go: getSrcDB: %v", dbName)
+
 	e.srcDBPoolLock.Lock()
 	defer e.srcDBPoolLock.Unlock()
 	db, exist := e.srcDBPool[dbName]
 	if exist {
 		return db, nil
 	}
+	e.ErrorLog.Debugf("engine.go: getSrcDB (not found in cache): %v", dbName)
+
 	cfg := config.Databases[dbName]
 	db, err := sql.Open(cfg.Driver, cfg.DSN())
 	if err != nil {
 		return nil, err
 	}
 	e.srcDBPool[dbName] = db
+	e.ErrorLog.Debugf("engine.go: getSrcDB (found db): %v", dbName)
+
 	return db, nil
 }
 
