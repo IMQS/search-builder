@@ -513,10 +513,13 @@ func (c *Config) postJSONLoad() error {
 // from the configuration that we read off disk. It has passwords removed, and it has
 // some more metadata baked in.
 func (c *Config) updateHttpApiConfig(e *Engine) {
+	e.ErrorLog.Debug("config.go: updateHttpApiConfig")
+
 	err := c.updateRowCounts(e)
 	if err != nil {
 		e.ErrorLog.Errorf("Error updating row counts: %v", err)
 	}
+	e.ErrorLog.Debug("config.go: updateHttpApiConfig: c.updateRowCounts done")
 
 	c.httpAPIConfigLock.Lock()
 	defer c.httpAPIConfigLock.Unlock()
@@ -525,6 +528,8 @@ func (c *Config) updateHttpApiConfig(e *Engine) {
 	if err != nil {
 		e.ErrorLog.Errorf("Error generating config for HTTP API: %v", err)
 	}
+	e.ErrorLog.Debug("config.go: updateHttpApiConfig: c.generateConfigForHttpAPI done")
+
 	hash := sha1.Sum([]byte(c.httpAPIConfig))
 	c.httpAPIConfigHash = hex.EncodeToString(hash[:8])
 }

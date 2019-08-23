@@ -53,6 +53,8 @@ type specialInstructions struct {
 }
 
 func (s *specialInstructions) realize(e *Engine) error {
+	e.ErrorLog.Debug("parser.go: realize")
+
 	if err := s.fixPairFieldAmbiguity(e); err != nil {
 		return err
 	}
@@ -76,6 +78,8 @@ func (s *specialInstructions) realize(e *Engine) error {
 // Ensure that all tables that are touched by 'pairs' instructions are covered by 'fields'
 // This procedure, and thinking behind it, are documenting in 'doc.go'. Search for "ambiguity".
 func (s *specialInstructions) fixPairFieldAmbiguity(e *Engine) error {
+	e.ErrorLog.Debug("parser.go: fixPairFieldAmbiguity")
+
 	seenTable := map[TableFullName]bool{}
 	for _, pair := range s.pairs {
 		pairTable := pair.field.table()
@@ -115,6 +119,8 @@ func (s *specialInstructions) ensurePairFieldsAreSearched() {
 }
 
 func (s *specialInstructions) addAllFieldsFromTable(e *Engine, table TableFullName) error {
+	e.ErrorLog.Debugf("parser.go: addAllFieldsFromTable: %v", table)
+
 	config, err := e.getTableFromName(table, true)
 	if err != nil {
 		return err

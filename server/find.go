@@ -372,11 +372,15 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 	if err != nil {
 		return nil, err
 	}
+	e.ErrorLog.Debugf("find.go: preprocessedQuery: %v", preprocessedQuery)
+
 	res.StaleIndex = e.anyStaleIndex(special.fields)
+	e.ErrorLog.Debug("find.go: e.anyStaleIndex done")
 
 	if err = special.realize(e); err != nil {
 		return nil, err
 	}
+	e.ErrorLog.Debug("find.go: special.realize done")
 
 	parser := NewDefaultParser()
 	tokens := parser.Tokenize(preprocessedQuery)
@@ -385,6 +389,7 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 	}
 
 	includeFieldsExp := buildIncludeFieldExpression(&special)
+	e.ErrorLog.Debug("find.go: buildIncludeFieldExpression done")
 
 	res.TimeQueryParse = time.Now().Sub(startParse)
 
@@ -393,6 +398,7 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 		return nil, err
 	}
 	defer tx.Commit()
+	e.ErrorLog.Debug("find.go: e.IndexDB.Begin transaction done")
 
 	// all rows that have at least one token match
 	foundRows := map[string]*resultRow{}
@@ -444,12 +450,15 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 		}
 		res.TimeDBFetch += time.Now().Sub(startFetch)
 	}
+	e.ErrorLog.Debug("find.go: Query the index for the tokens done")
 
 	// Query the index for the pair instructions (eg Type=Valve).
 	pairInstructions, err := special.generatePairInstructionSets(e)
 	if err != nil {
 		return nil, err
 	}
+	e.ErrorLog.Debug("find.go: special.generatePairInstructionSets done")
+
 	for _, instruction := range pairInstructions {
 		var rows *sql.Rows
 		var tokenORList string
@@ -482,6 +491,7 @@ func (e *Engine) findWithManualJoin(query *Query, config *Config) (*FindResult, 
 		}
 		res.TimeDBFetch += time.Now().Sub(startFetch)
 	}
+	e.ErrorLog.Debug("find.go: range over pairInstructions done")
 
 	startKeywords := time.Now()
 	e.addKeywordMatchesToResults(tokens, foundRows, config)
@@ -871,6 +881,7 @@ func (e *Engine) addRelatedRowsReference(tabToSubjugates map[tableID]cachedSubju
 }
 
 func (e *Engine) anyStaleIndex(fields []fieldFullName) bool {
+	e.ErrorLog.Debug("find.go: anyStaleIndex")
 	e.staleTablesLock.RLock()
 	defer e.staleTablesLock.RUnlock()
 	for _, field := range fields {
@@ -882,6 +893,7 @@ func (e *Engine) anyStaleIndex(fields []fieldFullName) bool {
 }
 
 func (e *Engine) refreshStaleIndexes(rebuildList []TableFullName) {
+	e.ErrorLog.Debug("find.go: refreshStaleIndexes")
 	e.staleTablesLock.Lock()
 	e.staleTables = make(map[TableFullName]bool)
 	for _, staleTable := range rebuildList {
