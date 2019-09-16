@@ -616,11 +616,27 @@ func (c *Config) computeTotalOrder() {
 	}
 }
 
+func (c *Config) LoadString(filename string) error {
+	if err := json.Unmarshal([]byte(filename), c); err != nil {
+		return err
+	}
+	c.setDefaultIndexField()
+	// Same comment here as in LoadFile regarding postJSONLoad
+	return nil
+}
+
 func (c *Config) LoadFile(filename string) error {
 	err := serviceconfig.GetConfig(filename, serviceName, serviceConfigVersion, serviceConfigFileName, c)
 	if err != nil {
 		return err
 	}
+	c.setDefaultIndexField()
+	// We don't run postJSONLoad here, because if there is a problem with the config, then we'd
+	// like to at least be able to emit log messages, if that's at all possible.
+	return nil
+}
+
+func (c *Config) setDefaultIndexField() {
 	for _, db := range c.Databases {
 		for _, table := range db.Tables {
 			if table.IndexField == "" {
@@ -628,9 +644,6 @@ func (c *Config) LoadFile(filename string) error {
 			}
 		}
 	}
-	// We don't run postJSONLoad here, because if there is a problem with the config, then we'd
-	// like to at least be able to emit log messages, if that's at all possible.
-	return nil
 }
 
 func (c *Config) updateRowCounts(e *Engine) error {

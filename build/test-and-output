@@ -1,0 +1,11 @@
+#!/bin/bash
+
+go test github.com/IMQS/search/server -v -cpu 2 \
+ -db_postgres \
+ -db_postgres_host=$POSTGRES_HOST \
+ | go2xunit -suite-name-prefix postgres_ -output /test-out/postgres.xml
+
+go test github.com/IMQS/search/server -v -cpu 2 -race -is_race \
+ -db_postgres \
+ -db_postgres_host=$POSTGRES_HOST \
+ | go2xunit -suite-name-prefix postgres_race_ -output /test-out/postgres-race.xml

@@ -1,0 +1,25 @@
+FROM golang:1.12
+
+ARG SSH_KEY
+
+# Authorize SSH Host
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh && \
+    ssh-keyscan github.com > /root/.ssh/known_hosts
+
+# We need this key so that we can read our private IMQS git repos from github
+RUN echo "$SSH_KEY" > /root/.ssh/id_rsa && \
+    chmod 600 /root/.ssh/id_rsa
+
+RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+WORKDIR /test
+
+RUN go get github.com/tebeka/go2xunit
+
+# Cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy code in
+COPY . .

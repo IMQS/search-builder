@@ -73,10 +73,11 @@ type Engine struct {
 	Config     *Config
 	ConfigLock sync.RWMutex
 
-	IndexDB    *sql.DB
-	ErrorLog   *log.Logger
-	AccessLog  *log.Logger
-	ConfigFile string
+	IndexDB      *sql.DB
+	ErrorLog     *log.Logger
+	AccessLog    *log.Logger
+	ConfigFile   string
+	ConfigString string // ConfigString takes precedence over ConfigFile. ConfigString was created for use by unit tests
 
 	// Cache of search_nametable
 	nameToID     map[string]uint16
@@ -242,9 +243,17 @@ func (e *Engine) Vacuum() error {
 func (e *Engine) reloadMergedConfig() error {
 	cfg := &Config{}
 
-	// Load original config file from disk
-	if err := cfg.LoadFile(e.ConfigFile); err != nil {
-		return err
+	if e.ConfigString != "" {
+		// ConfigString was created for unit tests, so that we can synthesize the config in code, and
+		// still stress the config loading and merging code path.
+		if err := cfg.LoadString(e.ConfigString); err != nil {
+			return err
+		}
+	} else {
+		// Load original config file from disk (or config service)
+		if err := cfg.LoadFile(e.ConfigFile); err != nil {
+			return err
+		}
 	}
 
 	tableRows, err := e.IndexDB.Query("SELECT dbname, tablename, config FROM search_config")
@@ -308,8 +317,6 @@ func (e *Engine) GetConfig() *Config {
 }
 
 func (e *Engine) updateConfig(databaseName string, tables []GenericTable) error {
-	// We update the database in a transaction for atomicity, and we follow the pattern described on
-	// https://godoc.org/github.com/lib/pq
 	txn, err := e.IndexDB.Begin()
 	if err != nil {
 		return err

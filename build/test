@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# SSH_KEY=$(cat ~/.ssh/id_rsa) build/test 
+
+die() {
+    echo $1
+    exit 1
+}
+
+if [ -d test-out ]; then
+    rm -rf test-out
+fi
+
+# Create a docker network so that our unit tests can talk to Postgres
+SEED=$(date +%s.%N)
+SEARCHNAME=test_search_$SEED
+NETNAME=test_nw_$SEED
+PGNAME=test_pg_$SEED
+
+echo "Building test container"
+docker build -t $SEARCHNAME --build-arg SSH_KEY="$SSH_KEY" -f build/Dockerfile-test .
+
+echo "Setting up network"
+docker rm -f $PGNAME
+docker network rm $NETNAME
+docker network create $NETNAME || die "Failed to create network $NETNAME"
+
+echo "Launch Postgres"
+PG_ID=$(docker run -d --network $NETNAME --name $PGNAME -v `pwd`/build/postgres-init:/docker-entrypoint-initdb.d -e POSTGRES_PASSWORD=unused postgres:10.5) || die "Failed to launch Postgres $PGNAME"
+# wait for Postgres to come alive
+PG_ALIVE=0
+for i in 1 2 3 4 5 6 7; do
+    echo "Waiting... $i"
+    SELECT="PGPASSWORD=unit_test_password psql -h $PGNAME -U unit_test_user postgres -c 'select 1'"
+	docker run --rm --network $NETNAME postgres:10.5 bash -c "$SELECT"
+    if [ $? == 0 ]; then
+        PG_ALIVE=1
+        break
+    fi
+    sleep 1
+done
+if [ $PG_ALIVE == 0 ]; then
+    echo "Timed out waiting for Postgres to come alive"
+    exit 1
+fi
+
+docker run --rm --network $NETNAME \
+    -v `pwd`/test-out:/test-out \
+    -e POSTGRES_HOST=$PGNAME \
+    $SEARCHNAME \
+    /bin/bash /test/build/test-and-output
+
+STATUS=$?
+
+docker stop $PG_ID
+docker rm $PG_ID
+docker network rm $NETNAME
+exit $STATUS
