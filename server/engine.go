@@ -122,8 +122,8 @@ func (e *Engine) Initialize(isTest bool) error {
 	e.isIndexOutOfDate_Atomic = 0
 	config := e.GetConfig()
 
-	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr))
-	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout))
+	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), true)
+	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), true)
 
 	genericCfg, haveGeneric := config.Databases[genericDatabaseName]
 	if !haveGeneric {

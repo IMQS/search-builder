@@ -1,7 +1,7 @@
 ##################################
 # Builder image
 ##################################
-FROM golang:1.11 as builder
+FROM golang:1.14 as builder
 
 ARG netrc
 ARG ssh_pvt_key
@@ -27,6 +27,7 @@ RUN cat /root/.ssh/id_rsa.pub
 
 RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
 WORKDIR /build/
+RUN go env -w GOPRIVATE="github.com/IMQS/*"
 RUN go build
 
 ####################################
