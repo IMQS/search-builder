@@ -464,7 +464,7 @@ func setupUpdateConfig(t testing.TB, e *Engine) {
 
 func setup(t testing.TB, setupFunc func(testing.TB, *Engine)) *Engine {
 	e := &Engine{}
-	e.ErrorLog = log.New(log.Stdout)
+	e.ErrorLog = log.New(log.Stdout, true)
 
 	e.Config = createBaseConfig()
 
