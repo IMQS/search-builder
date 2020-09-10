@@ -1,0 +1,38 @@
+name: Build Search Service
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
+  push:
+    branches:
+      - master
+      - dtpw-*
+      - rc
+      - uat
+      - stable
+  pull_request:
+    branches:
+      - master
+      - dtpw-*
+  # Also trigger on page_build, as well as release created events
+  page_build:
+  release:
+    types: # This configuration does not affect the page_build event above
+      - created
+
+jobs:
+  build:
+    name: Build Search
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        id: checkout
+      - name: build-push
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DEPLOY_DOCKER_USERNAME }}
+          password: ${{ secrets.DEPLOY_DOCKER_PASSWORD }}
+          repository: imqs/search
+          tag_with_ref: true
+          build_args: SSH_KEY=${{ secrets.DEPLOYBOT_SSH_KEY }}
+          cache_froms: golang:1.14, imqs/ubuntu-base
