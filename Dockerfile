@@ -1,11 +1,11 @@
-# docker build -t imqs/search:master --build-arg ssh_pvt_key="`cat ~/.ssh/id_rsa`" .
+# docker build -t imqs/search:master --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
 
 ##################################
 # Builder image
 ##################################
 FROM golang:1.14 as builder
 
-ARG ssh_pvt_key
+ARG SSH_KEY
 
 RUN mkdir /build
 
@@ -23,7 +23,7 @@ RUN mkdir -p /root/.ssh && \
 	ssh-keyscan github.com > /root/.ssh/known_hosts
 
 
-RUN echo "$ssh_pvt_key" > /root/.ssh/id_rsa && \
+RUN echo "$SSH_KEY" > /root/.ssh/id_rsa && \
 	chmod 600 /root/.ssh/id_rsa
 
 RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
