@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -122,8 +123,9 @@ func (e *Engine) Initialize(isTest bool) error {
 	e.isIndexOutOfDate_Atomic = 0
 	config := e.GetConfig()
 
-	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), true)
-	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), true)
+	isWindows := runtime.GOOS == "windows"
+	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), !isWindows)
+	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), !isWindows)
 
 	genericCfg, haveGeneric := config.Databases[genericDatabaseName]
 	if !haveGeneric {
