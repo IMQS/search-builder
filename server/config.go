@@ -348,6 +348,7 @@ type configHttpAPI struct {
 type Config struct {
 	PurgeDatabaseOnStartup  bool // If true, on startup, the search service will drop the searchindex database and have it recreated by the migrations packages
 	DisableAutoIndexRebuild bool // This was introduced for servers running on hard drives (i.e. not solid state), so that index rebuilds can be scheduled at off-peak times
+	EnableNightlyVacuum     bool // This was introduced when some of our servers began experiencing performance issues while searching some fields. The suspected culprit is a sizable set of stale tuples. This allows us to configure whether or not we perform nightly vacuums
 	HTTP                    ConfigHttp
 	Log                     ConfigLog
 	Databases               map[string]*ConfigDatabase

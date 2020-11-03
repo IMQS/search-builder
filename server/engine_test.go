@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -464,7 +465,7 @@ func setupUpdateConfig(t testing.TB, e *Engine) {
 
 func setup(t testing.TB, setupFunc func(testing.TB, *Engine)) *Engine {
 	e := &Engine{}
-	e.ErrorLog = log.New(log.Stdout, true)
+	e.ErrorLog = log.New(log.Stdout, runtime.GOOS != "windows")
 
 	e.Config = createBaseConfig()
 
