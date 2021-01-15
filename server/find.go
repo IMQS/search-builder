@@ -596,7 +596,7 @@ func (e *Engine) dumpResultRow(srcrow int64) {
 func buildTokenORList(e *Engine, tokens []string) string {
 	sql := "("
 	for _, token := range tokens {
-		sql += "token = " + escapeSqlLiteral(e.IndexDB, token) + " OR "
+		sql += "token = " + escapeSQLLiteral(e.IndexDB, token) + " OR "
 	}
 	sql = sql[0:len(sql)-4] + ")"
 	return sql
@@ -605,7 +605,7 @@ func buildTokenORList(e *Engine, tokens []string) string {
 func buildFuzzyTokenORList(e *Engine, tokens []string) string {
 	sql := "("
 	for _, token := range tokens {
-		sql += "token >= " + escapeSqlLiteral(e.IndexDB, token) + " AND token < " + escapeSqlLiteral(e.IndexDB, lexIncrement(token)) + " OR "
+		sql += "token >= " + escapeSQLLiteral(e.IndexDB, token) + " AND token < " + escapeSQLLiteral(e.IndexDB, lexIncrement(token)) + " OR "
 	}
 	sql = sql[0:len(sql)-4] + ")"
 	return sql
@@ -733,7 +733,7 @@ func (e *Engine) addValuesToResults(results []*FindResultRow, config *Config) er
 			return err
 		}
 		esc := func(ident string) string {
-			return escapeSqlIdent(db, ident)
+			return escapeSQLIdent(db, ident)
 		}
 
 		config := config.tableConfigFromName(queue[0].Table)

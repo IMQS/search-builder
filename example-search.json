@@ -1,25 +1,10 @@
 {
+	"PurgeDatabaseOnStartup": true,
+	"VerboseLogging": true,
+	"IndexDBAlias": "ImqsServerSearch",
 	"Databases": {
-		"index": {
-			"Driver":		"postgres",
-			"Host":			"127.0.0.1",
-			"Database": 	"searchindex",
-			"User":			"imqs",
-			"Password":		"1mq5p@55w0rd"
-		},
-		"ImqsServerGeneric": {
-			"Driver":		"postgres",
-			"Host":			"127.0.0.1",
-			"Database": 	"generic",
-			"User":			"imqs",
-			"Password":		"1mq5p@55w0rd"
-		},
+		"ImqsServerGeneric": {},
 		"ImqsServerMain": {
-			"Driver":		"postgres",
-			"Host":			"127.0.0.1",
-			"Database": 	"main",
-			"User":			"imqs",
-			"Password":		"1mq5p@55w0rd",
 			"Tables": {
 				"Province": {
 					"Name": "Province",

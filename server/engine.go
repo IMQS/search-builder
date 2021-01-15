@@ -5,41 +5,46 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/BurntSushi/migration"
 	"github.com/IMQS/log"
+	serviceconfig "github.com/IMQS/serviceconfigsgo"
 )
 
 const (
 	msgTableNotConfigured = "Requested table is not configured as part of the search index:"
 	msgFieldNotConfigured = "Requested field is not configured as part of the search index:"
 	msgKeywordNotMatched  = "Keyword not matched by any table:"
+
+	// This is an arbitrary constant. It has performance implications, because we have statically
+	// allocated buffers that can hold maxRowsInTuple x 64-bit, for every intermediate result. This
+	// is why we impose this limit. The number of relations from any one table to any other table
+	// has a maximum of maxRowsInTuple - 1 (because one slot is used for the primary table's srcrow).
+	// This works in conjunction with maxBytesInRowTuple. Both constraints must be satisfied.
+	maxRowsInTuple = 5
+
+	// This is a constant very similar to the above maxRowsInTuple.
+	// This can store 4x5-byte rows, and one 4-byte row.
+	// A 5-byte varint can store a value up to 17,179,869,184
+	// A 4-byte varint can store a value up to 134,217,728
+	// This works in conjunction with maxRowsInTuple. Both constraints must be satisfied.
+	maxBytesInRowTuple = 24
 )
 
-var errUnterminatedInstruction = errors.New("Query instruction not terminated")
-var errInvalidPairsInstruction = errors.New("Invalid 'pairs' instruction")
-var errTableNotConfigured = errors.New(msgTableNotConfigured)
-var errTooManyTokensInQuery = errors.New("Query is too complicated")
-var errTooManyIndexedFields = fmt.Errorf("Too many indexed fields. Maximum is %v", maxFieldsPerTable)
-var errRowTupleTooLarge = fmt.Errorf("Too many bytes in row tuple. Maximum is %v", maxBytesInRowTuple)
-var errFieldNotFoundInConfig = errors.New("Field not found in config")
-
-// This is an arbitrary constant. It has performance implications, because we have statically
-// allocated buffers that can hold maxRowsInTuple x 64-bit, for every intermediate result. This
-// is why we impose this limit. The number of relations from any one table to any other table
-// has a maximum of maxRowsInTuple - 1 (because one slot is used for the primary table's srcrow).
-// This works in conjunction with maxBytesInRowTuple. Both constraints must be satisfied.
-const maxRowsInTuple = 5
-
-// This is a constant very similar to the above maxRowsInTuple.
-// This can store 4x5-byte rows, and one 4-byte row.
-// A 5-byte varint can store a value up to 17,179,869,184
-// A 4-byte varint can store a value up to 134,217,728
-// This works in conjunction with maxRowsInTuple. Both constraints must be satisfied.
-const maxBytesInRowTuple = 24
+var (
+	errUnterminatedInstruction = errors.New("Query instruction not terminated")
+	errInvalidPairsInstruction = errors.New("Invalid 'pairs' instruction")
+	errTableNotConfigured      = errors.New(msgTableNotConfigured)
+	errTooManyTokensInQuery    = errors.New("Query is too complicated")
+	errTooManyIndexedFields    = fmt.Errorf("Too many indexed fields. Maximum is %v", maxFieldsPerTable)
+	errRowTupleTooLarge        = fmt.Errorf("Too many bytes in row tuple. Maximum is %v", maxBytesInRowTuple)
+	errFieldNotFoundInConfig   = errors.New("Field not found in config")
+)
 
 type tableID uint16
 type fieldID uint16
@@ -65,8 +70,7 @@ func (f fieldFullID) extractFieldID() fieldID {
 	return fieldID(f & 0xffff)
 }
 
-/* Search Engine
- */
+// Engine for the search service
 type Engine struct {
 	// The config can be modified by API calls, but whenever it is modified, it is done so by creating a completely new instance, acquiring the write lock,	and replacing the old instance.
 	// This minimizes lock contention, so that long running jobs (eg indexing) can proceed while, for example, the user modifies the configuration from the front-end.
@@ -118,30 +122,28 @@ func pickLogFile(filename, defaultFilename string) string {
 	return defaultFilename
 }
 
-func (e *Engine) Initialize(isTest bool) error {
-	e.isIndexOutOfDate_Atomic = 0
+func (e *Engine) initLogging() {
 	config := e.GetConfig()
 
-	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), true)
-	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), true)
+	isNotWindows := runtime.GOOS != "windows"
+	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), isNotWindows)
+	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), isNotWindows)
+	if config.VerboseLogging {
+		e.ErrorLog.Level = log.Trace
+		e.AccessLog.Level = log.Trace
+	}
+}
 
-	genericCfg, haveGeneric := config.Databases[genericDatabaseName]
-	if !haveGeneric {
-		return errors.New("No 'generic' database specified")
+// Initialize sets up the service engine
+func (e *Engine) Initialize(isTest bool) error {
+	var err error
+	e.isIndexOutOfDate_Atomic = 0
+	e.initLogging()
+	if err = e.openIndexDB(); err != nil {
+		return fmt.Errorf("Could not open index database: %v", err.Error())
 	}
 
-	indexCfg, haveIndex := config.Databases[indexDatabaseName]
-	if !haveIndex {
-		return errors.New("No 'index' database specified")
-	}
-
-	indexDB, err := OpenIndexDB(indexCfg, genericCfg)
-	if err != nil {
-		return fmt.Errorf("Error connecting to search index database: %v", err)
-	}
-	e.IndexDB = indexDB
-
-	if isTest == false {
+	if !isTest {
 		// Now that we have loaded the file-based config, connect to the database
 		// and read the extra config stored inside the database and merge with the current config
 		if err := e.reloadMergedConfig(); err != nil {
@@ -149,7 +151,7 @@ func (e *Engine) Initialize(isTest bool) error {
 		}
 	}
 
-	config = e.GetConfig()
+	config := e.GetConfig()
 	// It's important that we run postJSONLoad after setting up our logging. That way, the user
 	// gets to see config errors in the logs.
 	if err := config.postJSONLoad(); err != nil {
@@ -193,12 +195,71 @@ func (e *Engine) Close() {
 	e.clearInMemoryCaches()
 }
 
+// openIndexDB opens a connection to the index db, after performing the migrations
+// that and customizing the DB Connection limits
+func (e *Engine) openIndexDB() error {
+	_rootConfig := e.GetConfig()
+	genericConf, err := serviceconfig.GetDBAlias(_rootConfig.getGenericDbAlias())
+	if err != nil {
+		return fmt.Errorf("Could not find generic database: %v", err)
+	}
+
+	conf, err := serviceconfig.GetDBAlias(indexDatabaseAlias)
+	if err != nil {
+		return fmt.Errorf("Could not find index database: %v", err)
+	}
+
+	migrations := createMigrations(genericConf)
+
+	if _rootConfig.PurgeDatabaseOnStartup {
+		e.ErrorLog.Info("Dropping index database")
+		if err = e.dropIndexDB(); err != nil {
+			return fmt.Errorf("Could not drop index database: %v", err)
+		}
+	}
+
+	if e.IndexDB, err = migration.Open(conf.Driver, conf.DSN(), migrations); err == nil {
+		cfg := e.GetConfig().Databases[conf.Database]
+		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
+		return nil
+	}
+
+	// Got the following error on 'prefix', when 'searchindex' DB did not exist:
+	// Error initializing search engine: Error connecting to search index database:
+	// Could not get DB version: WSARecv tcp 127.0.0.1:60064:
+	// An existing connection was forcibly closed by the remote host.
+	if isDBNotExistError(err, conf.Database) {
+		if eCreate := createDB(conf); eCreate != nil {
+			return err
+		}
+		e.IndexDB, err = migration.Open(conf.Driver, conf.DSN(), migrations)
+		if err != nil {
+			return err
+		}
+	}
+	if e.IndexDB != nil {
+		cfg := e.GetConfig().Databases[conf.Database]
+		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
+	}
+
+	return nil
+}
+
+func (e *Engine) setDBConnectionLimits(cfg *ConfigDatabase, conx *serviceconfig.DBConfig, db *sql.DB) {
+	if cfg != nil && cfg.MaxIdleConns != 0 {
+		db.SetMaxIdleConns(cfg.MaxIdleConns)
+	}
+	if cfg != nil && cfg.MaxOpenConns != 0 {
+		db.SetMaxOpenConns(cfg.MaxOpenConns)
+	}
+}
+
 func (e *Engine) Find(query *Query, config *Config) (*FindResult, error) {
 	// track the number of simultaneous find operations, as well as high water mark
 	numFindOps := atomic.AddUint32(&e.numFindOpsInProgress, 1)
 	defer atomic.AddUint32(&e.numFindOpsInProgress, ^uint32(0))
 	if atomicMaxUint32(&e.maxFindOpsInProgress, numFindOps) {
-		e.ErrorLog.Infof("Max simultaneous find ops in progress: %v", atomic.LoadUint32(&e.maxFindOpsInProgress))
+		e.ErrorLog.Debugf("Max simultaneous find ops in progress: %v", atomic.LoadUint32(&e.maxFindOpsInProgress))
 	}
 
 	// something is wrong if we go above 50 pending requests -> switch to detailed logging
@@ -384,14 +445,12 @@ func (e *Engine) getConfigTable(table string) (string, *ConfigTable) {
 	getSrcTableColumns - returns a list of column names from the source table
 */
 func (e *Engine) getSrcTableColumns(database, table string) ([]string, error) {
-	mainConfig := e.GetConfig()
-
-	dbConfig, haveDatabase := mainConfig.Databases[database]
-	if !haveDatabase {
-		return nil, fmt.Errorf("No '%v' database config found", database)
+	alias, err := serviceconfig.GetDBAlias(database)
+	if err != nil {
+		return nil, fmt.Errorf("Could not get alias: %v", err)
 	}
 
-	db, err := sql.Open(dbConfig.Driver, dbConfig.DSN())
+	db, err := sql.Open(alias.Driver, alias.DSN())
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +672,7 @@ func (e *Engine) deleteTableInfo(tableNames []TableFullName) error {
 	}
 	names := ""
 	for _, table := range tableNames {
-		names += escapeSqlLiteral(e.IndexDB, string(table)) + ", "
+		names += escapeSQLLiteral(e.IndexDB, string(table)) + ", "
 	}
 	names = names[0 : len(names)-2]
 
@@ -633,8 +692,19 @@ func (e *Engine) getSrcDB(dbName string, config *Config) (*sql.DB, error) {
 	}
 	e.ErrorLog.Debugf("engine.go: getSrcDB (not found in cache): %v", dbName)
 
-	cfg := config.Databases[dbName]
-	db, err := sql.Open(cfg.Driver, cfg.DSN())
+	var (
+		err error
+		cfg = config.Databases[dbName]
+		dba = dbName
+	)
+	if dba == "index" {
+		dba = indexDatabaseAlias
+	}
+	if cfg.DBConfig, err = serviceconfig.GetDBAlias(dba); err != nil {
+		return nil, fmt.Errorf("Could not find DB Config: %v", err)
+	}
+
+	db, err = sql.Open(cfg.DBConfig.Driver, cfg.DBConfig.DSN())
 	if err != nil {
 		return nil, err
 	}
@@ -642,6 +712,15 @@ func (e *Engine) getSrcDB(dbName string, config *Config) (*sql.DB, error) {
 	e.ErrorLog.Debugf("engine.go: getSrcDB (found db): %v", dbName)
 
 	return db, nil
+}
+
+func (e *Engine) dropIndexDB() error {
+	alias, err := serviceconfig.GetDBAlias(e.GetConfig().getIndexDbAlias())
+	if err != nil {
+		return fmt.Errorf("Could not get dbAlias while dropping database: %v")
+	}
+	cp := alias
+	return dropDB(cp)
 }
 
 func (e *Engine) clearInMemoryCaches() {

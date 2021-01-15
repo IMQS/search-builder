@@ -2,69 +2,70 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
 
 	//"fmt"
 	"strings"
 
 	"github.com/BurntSushi/migration"
+	serviceconfig "github.com/IMQS/serviceconfigsgo"
 )
 
-// At some point we're going to need to make this configurable
+// ROWID is the default row id field for the IMQS domain
 const ROWID = "rowid"
 
-func OpenIndexDB(cfg, genericCfg *ConfigDatabase) (*sql.DB, error) {
-	migrations := createMigrations(genericCfg)
-	db, err := migration.Open(cfg.Driver, cfg.DSN(), migrations)
-	if err == nil {
-		setDBConnectionLimits(cfg, db)
-		return db, err
-	}
-	// Got the following error on 'prefix', when 'searchindex' DB did not exist:
-	// Error initializing search engine: Error connecting to search index database: Could not get DB version: WSARecv tcp 127.0.0.1:60064: An existing connection was forcibly closed by the remote host.
-	if strings.Index(err.Error(), "pq: database \""+cfg.Database+"\" does not exist") != -1 {
-		eCreate := createDB(cfg)
-		if eCreate != nil {
-			return nil, err
-		}
-		db, err = migration.Open(cfg.Driver, cfg.DSN(), migrations)
-	}
-	if db != nil {
-		setDBConnectionLimits(cfg, db)
-	}
-	return db, err
-}
-
-func setDBConnectionLimits(cfg *ConfigDatabase, db *sql.DB) {
-	if cfg.MaxIdleConns != 0 {
-		db.SetMaxIdleConns(cfg.MaxIdleConns)
-	}
-	if cfg.MaxOpenConns != 0 {
-		db.SetMaxOpenConns(cfg.MaxOpenConns)
-	}
-}
-
-func createDB(cfg *ConfigDatabase) error {
+func _pgdbAction(conf *serviceconfig.DBConfig, action string) error {
 	// Connect via the Postgres database, so that we can create the DB
-	cfg2 := *cfg
+	cfg2 := *conf
 	cfg2.Database = "postgres"
-	db, err := sql.Open(cfg.Driver, cfg2.DSN())
+	db, err := sql.Open(conf.Driver, cfg2.DSN())
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-	_, eExec := db.Exec("CREATE DATABASE \"" + cfg.Database + "\"")
-	return eExec
+	logicalOperator := ""
+	if !strings.EqualFold("create", action) {
+		logicalOperator = "IF EXISTS"
+	}
+	actions := []string{
+		action + " DATABASE " + logicalOperator + " \"" + conf.Database + "\"",
+	}
+	if strings.EqualFold("drop", action) {
+		actions = append(
+			[]string{"SELECT pg_terminate_backend(pid) from pg_stat_activity where datname='" + conf.Database + "'"},
+			actions...,
+		)
+	}
+	for _, _action := range actions {
+		if _, eExec := db.Exec(_action); eExec != nil {
+			return fmt.Errorf("Could not execute SQL command:\nERROR: %v\nSQL: %v", eExec, _action)
+		}
+	}
+
+	return nil
 }
 
-func escapeSqlIdent(db *sql.DB, ident string) string {
+func createDB(conf *serviceconfig.DBConfig) error {
+	return _pgdbAction(conf, "CREATE")
+}
+
+func isDBNotExistError(err error, dbName string) bool {
+	return strings.Index(err.Error(), "pq: database \""+dbName+"\" does not exist") != -1
+}
+
+func dropDB(conf *serviceconfig.DBConfig) error {
+	return _pgdbAction(conf, "DROP")
+}
+
+func escapeSQLIdent(db *sql.DB, ident string) string {
 	return "\"" + ident + "\""
 }
 
-func escapeSqlLiteral(db *sql.DB, literal string) string {
+func escapeSQLLiteral(db *sql.DB, literal string) string {
 	return "'" + strings.Replace(literal, "'", "''", -1) + "'"
 }
 
-func createMigrations(genericCfg *ConfigDatabase) []migration.Migrator {
+func createMigrations(genericCfg *serviceconfig.DBConfig) []migration.Migrator {
 	var migrations []migration.Migrator
 
 	// Each of these migrations corresponds to a version in whole migration.

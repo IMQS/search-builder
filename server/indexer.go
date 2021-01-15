@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/jasonlvhit/gocron"
 	"github.com/lib/pq"
 )
 
@@ -206,7 +207,7 @@ type subjugateJoinMap map[string]int64
 // Index all of the data from this table.
 func (e *Engine) buildIndexOnTable(sourceDB *sql.DB, tabID tableID, tableName TableFullName, config *ConfigTable, engineConfig *Config) error {
 	esc := func(ident string) string {
-		return escapeSqlIdent(sourceDB, ident)
+		return escapeSQLIdent(sourceDB, ident)
 	}
 
 	// First phase is to select the rowids for all of the subjugate (related) tables. We are effectively "pre-joining"
@@ -238,7 +239,6 @@ func (e *Engine) buildIndexOnTable(sourceDB *sql.DB, tabID tableID, tableName Ta
 			}
 			joins[isub][string(key)] = srcrow
 		}
-		rows.Close()
 	}
 
 	// Prepare the SELECT statement etc, for the main table read
@@ -318,8 +318,7 @@ func (e *Engine) buildIndexOnTable(sourceDB *sql.DB, tabID tableID, tableName Ta
 			field := config.Fields[i-1]
 			res := results[i].(*sql.NullString)
 			if res.Valid {
-				parser.MinimumTokenLength = field.MinimumTokenLength
-				parser.ExcludeEntireStringFromResult = field.ExcludeEntireStringFromResult
+				parser = field.ToDefaultParser()
 				tokens := parser.Tokenize(res.String)
 				for _, t := range tokens {
 					row.tokens = append(row.tokens, tokenFieldPair{t, fieldIDs[i-1]})
@@ -370,7 +369,17 @@ func (e *Engine) buildIndexOnTable(sourceDB *sql.DB, tabID tableID, tableName Ta
 	return err
 }
 
-// Launch an auto rebuild loop that never exits.
+// StartAutoVacuum uses gocron to setup a 2 am task that performs the engine's
+// vacuum as a preliminary measure to investigate issues with the search service.
+// We run into issues when some of our users try to search 'WaterDemandStand'
+// One of the suspicions is that the size of this dataset (roughly 740 000
+// records), combined with the concurrency model that Postgres uses is leaving
+// ghost tuples all over the place.
+func (e *Engine) StartAutoVacuum() {
+	gocron.Every(1).Day().At("02:00").Do(e.Vacuum)
+}
+
+// StartAutoRebuilder launches an auto rebuild loop that never exits.
 // This function is never run if Config.DisableAutoIndexRebuild = true.
 // Our pause time between checks starts at 1 minute.
 // When we encounter a failure, we double our pause time, up to a maximum
@@ -399,11 +408,11 @@ func (e *Engine) StartAutoRebuilder() {
 	}
 }
 
-// Launch a never-ending loop that wakes up once a minute and determines whether
-// we have any stale indexes that need to be rebuilt. This is used to inform the
-// front-end that we may be serving up stale results. This runs completely
-// independently of the auto rebuilder, but it shares the same logic for determining
-// which tables need to be reindexed.
+// StartStateWatcher launches a never-ending loop that wakes up once a minute
+// and determines whether we have any stale indexes that need to be rebuilt.
+// This is used to inform the front-end that we may be serving up stale results.
+// This runs completely independently of the auto rebuilder, but it shares the
+// same logic for determining which tables need to be reindexed.
 func (e *Engine) StartStateWatcher() {
 	config := e.GetConfig()
 	last_stale := time.Now().Add(-time.Hour)
@@ -432,7 +441,7 @@ func (e *Engine) StartStateWatcher() {
 	}
 }
 
-// Automatically detect tables that have changed, and rebuild the index on them
+// AutoRebuild detect tables that have changed, and rebuild the index on them
 // This should be called perhaps once every thirty seconds.
 func (e *Engine) AutoRebuild() error {
 	config := e.GetConfig()
@@ -535,7 +544,7 @@ func (e *Engine) trimUnusedNames(config *Config) error {
 	// Wipe DB
 	trimSetSql := ""
 	for _, s := range trimSet {
-		trimSetSql += escapeSqlLiteral(e.IndexDB, s) + ", "
+		trimSetSql += escapeSQLLiteral(e.IndexDB, s) + ", "
 	}
 	trimSetSql = trimSetSql[0 : len(trimSetSql)-2]
 	e.ErrorLog.Infof("Trim unused names from search_nametable (%v)", trimSetSql)

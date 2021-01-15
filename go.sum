@@ -16,6 +16,8 @@ github.com/IMQS/serviceconfigsgo v0.0.0-20181011085921-596c4358dcd4 h1:0S0NJlDz5
 github.com/IMQS/serviceconfigsgo v0.0.0-20181011085921-596c4358dcd4/go.mod h1:Sal40iFTM7BqULDKrOwKuAV4swyPeCk1jWxx5zMsJsI=
 github.com/IMQS/serviceconfigsgo v1.0.1 h1:esfbNq4C1yS178msNDNZx/t5UhXnCp7YA6Ggxgu1/Ag=
 github.com/IMQS/serviceconfigsgo v1.0.1/go.mod h1:O6YTvG5CC8Vg5cBgXpRkEevFCzWgVl/dh2GR7IQSr+c=
+github.com/IMQS/serviceconfigsgo v1.0.3 h1:dYxGGfNWdDxg8P/cUjbJmY8MtqbK6q/8dFLQC0C2dLM=
+github.com/IMQS/serviceconfigsgo v1.0.3/go.mod h1:jszIaBr45YlF7p9TjCV86wrhQ742T0IjoEAEiBRhk4Q=
 github.com/julienschmidt/httprouter v1.2.0 h1:TDTW5Yz1mjftljbcKqRcrYhd4XeOoI98t+9HbQbYf7g=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/lib/pq v1.0.0 h1:X5PMW56eZitiTeO7tKzZxFCSpbFZJtkMMooicw2us9A=

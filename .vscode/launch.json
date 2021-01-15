@@ -9,12 +9,12 @@
 			"port": 2345,
 			"host": "127.0.0.1",
 			"cwd": "${workspaceRoot}",
-			"program": "${workspaceRoot}/imqssearch.go",
+			"program": "${workspaceRoot}/main.go",
 			"args": [
-				"-c=example-search.json",
+				"-c=jwater-search.json",
 				"run"
 			],
-			"showLog": true
+			"showLog": false,
 		},
 		{
 			"name": "Launch All tests.",

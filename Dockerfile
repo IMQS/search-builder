@@ -3,7 +3,7 @@
 ##################################
 # Builder image
 ##################################
-FROM golang:1.14 as builder
+FROM golang:1.15 as builder
 
 ARG SSH_KEY
 
@@ -15,7 +15,6 @@ RUN mkdir -p /root/.ssh && \
 	ssh-keyscan github.com > /root/.ssh/known_hosts
 
 COPY ./ /build
-RUN git version
 
 # Authorize SSH Host
 RUN mkdir -p /root/.ssh && \

@@ -8,7 +8,7 @@ require (
 	github.com/IMQS/gowinsvc v0.0.0-20171019081213-88eed8ddfe95
 	github.com/IMQS/gzipresponse v0.0.0-20160722104732-df62d611d085
 	github.com/IMQS/log v1.0.2
-	github.com/IMQS/serviceconfigsgo v1.0.1
+	github.com/IMQS/serviceconfigsgo v1.0.3
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.5
