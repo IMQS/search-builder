@@ -125,9 +125,9 @@ func pickLogFile(filename, defaultFilename string) string {
 func (e *Engine) initLogging() {
 	config := e.GetConfig()
 
-	isNotWindows := runtime.GOOS != "windows"
-	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), isNotWindows)
-	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), isNotWindows)
+	isWindows := runtime.GOOS == "windows"
+	e.ErrorLog = log.New(pickLogFile(config.Log.ErrorFile, log.Stderr), !isWindows)
+	e.AccessLog = log.New(pickLogFile(config.Log.AccessFile, log.Stdout), !isWindows)
 	if config.VerboseLogging {
 		e.ErrorLog.Level = log.Trace
 		e.AccessLog.Level = log.Trace
