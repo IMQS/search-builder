@@ -15,7 +15,7 @@ type Parser interface {
 	Tokenize(src string) []string
 }
 
-// The default IMQS parser
+// DefaultParser is the default IMQS parser
 type DefaultParser struct {
 	MinimumTokenLength            int
 	ExcludeEntireStringFromResult bool
@@ -286,13 +286,13 @@ func (p *DefaultParser) Tokenize(src string) []string {
 
 	for _, ch := range src {
 		// Incorporate alphanumeric test so that we can frequently avoid the lookup inside the splitter list
-		is_alnum := (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
-		is_break := !is_alnum && isSplitter(ch)
-		is_ignored_prefix := ch == '0'
+		isAlphaNumeric := (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+		isBreak := !isAlphaNumeric && isSplitter(ch)
+		isIgnoredPrefix := ch == '0'
 		switch state {
 		case state_space:
-			if !is_break {
-				if is_ignored_prefix {
+			if !isBreak {
+				if isIgnoredPrefix {
 					state = state_word_ignored_prefix
 				} else {
 					state = state_word_active
@@ -301,15 +301,15 @@ func (p *DefaultParser) Tokenize(src string) []string {
 				}
 			}
 		case state_word_ignored_prefix:
-			if !is_break && !is_ignored_prefix {
+			if !isBreak && !isIgnoredPrefix {
 				state = state_word_active
 				token = append(token, ch)
 				ignoreCount = 0
 			}
 		case state_word_active:
-			if !is_break {
+			if !isBreak {
 				token = append(token, ch)
-				if is_ignored_prefix {
+				if isIgnoredPrefix {
 					ignoreCount++
 					if ignoreCount >= 4 {
 						// If we have four trailing ignored characters, then terminate our token, and switch to 'ignored prefix' state

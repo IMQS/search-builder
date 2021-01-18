@@ -9,3 +9,4 @@ pkg/
 search
 search.exe
 /test-out
+__debug_bin

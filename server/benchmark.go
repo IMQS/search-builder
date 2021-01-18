@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-/* Runs a set of queries, and determines the average query time
+/* BenchmarkReads runs a set of queries, and determines the average query time
 
 In order to populate the database with results that work for this benchmark, use the
 following SQL:

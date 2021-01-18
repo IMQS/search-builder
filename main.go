@@ -55,6 +55,9 @@ func exec(cmdName string, args []string, options cli.OptionSet) int {
 		if !config.DisableAutoIndexRebuild {
 			go engine.StartAutoRebuilder()
 		}
+		if config.EnableNightlyVacuum {
+			go engine.StartAutoVacuum()
+		}
 		err = engine.RunHttp()
 		if err != nil {
 			engine.ErrorLog.Errorf("Error running HTTP server: %v\n", err)
