@@ -8,7 +8,7 @@ import (
 
 	"github.com/IMQS/cli"
 	"github.com/IMQS/gowinsvc/service"
-	"github.com/IMQS/search/server"
+	"github.com/IMQS/search-builder/server"
 	_ "github.com/lib/pq"
 )
 

@@ -691,7 +691,6 @@ func (c *Config) updateRowCounts(e *Engine) error {
 					dbConfig.Tables[tableName].RowCount = 0
 				}
 			}
-			// }
 		}
 	}
 	if time.Now().Sub(start) > 15*time.Second {

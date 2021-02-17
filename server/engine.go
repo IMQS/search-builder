@@ -219,7 +219,7 @@ func (e *Engine) openIndexDB() error {
 	}
 
 	if e.IndexDB, err = migration.Open(conf.Driver, conf.DSN(), migrations); err == nil {
-		cfg := e.GetConfig().Databases[conf.Database]
+		cfg := e.GetConfig().Databases[conf.Name]
 		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
 		return nil
 	}
@@ -228,7 +228,7 @@ func (e *Engine) openIndexDB() error {
 	// Error initializing search engine: Error connecting to search index database:
 	// Could not get DB version: WSARecv tcp 127.0.0.1:60064:
 	// An existing connection was forcibly closed by the remote host.
-	if isDBNotExistError(err, conf.Database) {
+	if isDBNotExistError(err, conf.Name) {
 		if eCreate := createDB(conf); eCreate != nil {
 			return err
 		}
@@ -238,7 +238,7 @@ func (e *Engine) openIndexDB() error {
 		}
 	}
 	if e.IndexDB != nil {
-		cfg := e.GetConfig().Databases[conf.Database]
+		cfg := e.GetConfig().Databases[conf.Name]
 		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
 	}
 

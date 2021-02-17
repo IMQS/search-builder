@@ -20,7 +20,7 @@ case ARGV[0]
 	when "prepare"	then
 		exec_or_die("go build")
 	when "copy_out" then
-		FileUtils.cp("search.exe", out_dir + '/bin/imqssearch.exe')
+		FileUtils.cp("search-builder.exe", out_dir + '/bin/imqssearch.exe')
 	when "test_unit" then
 		exec_or_die("go test github.com/IMQS/search/server -db_postgres -cpu 2")
 		exec_or_die("go test github.com/IMQS/search/server -db_postgres -cpu 2 -race")

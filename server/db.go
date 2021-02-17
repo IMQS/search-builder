@@ -17,7 +17,7 @@ const ROWID = "rowid"
 func _pgdbAction(conf *serviceconfig.DBConfig, action string) error {
 	// Connect via the Postgres database, so that we can create the DB
 	cfg2 := *conf
-	cfg2.Database = "postgres"
+	cfg2.Name = "postgres"
 	db, err := sql.Open(conf.Driver, cfg2.DSN())
 	if err != nil {
 		return err
@@ -28,11 +28,11 @@ func _pgdbAction(conf *serviceconfig.DBConfig, action string) error {
 		logicalOperator = "IF EXISTS"
 	}
 	actions := []string{
-		action + " DATABASE " + logicalOperator + " \"" + conf.Database + "\"",
+		action + " DATABASE " + logicalOperator + " \"" + conf.Name + "\"",
 	}
 	if strings.EqualFold("drop", action) {
 		actions = append(
-			[]string{"SELECT pg_terminate_backend(pid) from pg_stat_activity where datname='" + conf.Database + "'"},
+			[]string{"SELECT pg_terminate_backend(pid) from pg_stat_activity where datname='" + conf.Name + "'"},
 			actions...,
 		)
 	}

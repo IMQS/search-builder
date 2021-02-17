@@ -8,5 +8,7 @@ pkg/
 /imqssearch.exe
 search
 search.exe
+search-builder
+search-builder.exe
 /test-out
 __debug_bin
