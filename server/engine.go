@@ -204,7 +204,7 @@ func (e *Engine) openIndexDB() error {
 		return fmt.Errorf("Could not find generic database: %v", err)
 	}
 
-	conf, err := serviceconfig.GetDBAlias(indexDatabaseAlias)
+	conf, err := serviceconfig.GetDBAlias(e.Config.IndexDBAlias)
 	if err != nil {
 		return fmt.Errorf("Could not find index database: %v", err)
 	}
@@ -698,7 +698,7 @@ func (e *Engine) getSrcDB(dbName string, config *Config) (*sql.DB, error) {
 		dba = dbName
 	)
 	if dba == "index" {
-		dba = indexDatabaseAlias
+		dba = config.getIndexDbAlias()
 	}
 	if cfg.DBConfig, err = serviceconfig.GetDBAlias(dba); err != nil {
 		return nil, fmt.Errorf("Could not find DB Config: %v", err)
