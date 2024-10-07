@@ -417,7 +417,7 @@ func (e *Engine) deleteConfigTable(database, table string) error {
 }
 
 /*
-	getConfigTable - returns the table name and config
+getConfigTable - returns the table name and config
 */
 func (e *Engine) getConfigTable(table string) (string, *ConfigTable) {
 	var currentTableName string
@@ -442,7 +442,7 @@ func (e *Engine) getConfigTable(table string) (string, *ConfigTable) {
 }
 
 /*
-	getSrcTableColumns - returns a list of column names from the source table
+getSrcTableColumns - returns a list of column names from the source table
 */
 func (e *Engine) getSrcTableColumns(database, table string) ([]string, error) {
 	alias, err := serviceconfig.GetDBAlias(database)
@@ -466,7 +466,7 @@ func (e *Engine) getSrcTableColumns(database, table string) ([]string, error) {
 }
 
 /*
-	updateConfigTable - updates config tablename using longLivedName
+updateConfigTable - updates config tablename using longLivedName
 */
 func (e *Engine) updateConfigTable(database, tableName, longLivedName string) error {
 	// If table is not configured for search just return
@@ -521,7 +521,7 @@ func (e *Engine) updateConfigTable(database, tableName, longLivedName string) er
 }
 
 /*
-	refreshJSONConfig - updates front end search config after database config update
+refreshJSONConfig - updates front end search config after database config update
 */
 func (e *Engine) refreshJSONConfig() error {
 	if err := e.reloadMergedConfig(); err != nil {
@@ -717,7 +717,7 @@ func (e *Engine) getSrcDB(dbName string, config *Config) (*sql.DB, error) {
 func (e *Engine) dropIndexDB() error {
 	alias, err := serviceconfig.GetDBAlias(e.GetConfig().getIndexDbAlias())
 	if err != nil {
-		return fmt.Errorf("Could not get dbAlias while dropping database: %v")
+		return fmt.Errorf("Could not get dbAlias while dropping database: index")
 	}
 	cp := alias
 	return dropDB(cp)

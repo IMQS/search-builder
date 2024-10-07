@@ -24,7 +24,7 @@ concurrency: ${{ github.ref }}
 jobs:
   build:
     name: Build Search
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -37,4 +37,4 @@ jobs:
           repository: imqs/search
           tag_with_ref: true
           build_args: SSH_KEY=${{ secrets.DEPLOYBOT_SSH_KEY }}
-          cache_froms: golang:1.14, imqs/ubuntu-base
+          cache_froms: golang:1.22, imqs/ubuntu-base:24.04

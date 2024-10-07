@@ -19,14 +19,15 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/IMQS/log"
+	serviceconfig "github.com/IMQS/serviceconfigsgo"
 )
 
 // Run these tests with
 //  go test github.com/IMQS/search/server -db_postgres -cpu 2
 //  go test github.com/IMQS/search/server -db_postgres -cpu 2 -race -is_race
 
-var db_postgres = flag.Bool("db_postgres", false, "Run tests against Postgres index")
-var db_postgres_host = flag.String("db_postgres_host", "", "Postgres hostname")
+var db_postgres = flag.Bool("db_postgres", true, "Run tests against Postgres index")
+var db_postgres_host = flag.String("db_postgres_host", "localhost", "Postgres hostname")
 
 // I can't figure out how to detect when the "-race" flag is set (it's not in the regular flags list),
 // we so need to pass in two flags - one for the Go test runtime, and one for our own use
@@ -34,42 +35,54 @@ var isRace = flag.Bool("is_race", false, "Notify performance tests when running 
 
 func conxIndexPostgres() *ConfigDatabase {
 	conx := &ConfigDatabase{
-		Driver:   "postgres",
-		Host:     "localhost",
-		Database: "unit_test_search_index",
-		User:     "unit_test_user",
-		Password: "unit_test_password",
+		DBConfig: &serviceconfig.DBConfig{
+			Host:     "localhost",
+			Port:     "5432",
+			Password: "unit_test_password",
+			Driver:   "postgres",
+			Username: "unit_test_user",
+			Name:     "unit_test_search_index",
+			SSLMode:  "disable",
+		},
 	}
 	if *db_postgres_host != "" {
-		conx.Host = *db_postgres_host
+		conx.DBConfig.Host = *db_postgres_host
 	}
 	return conx
 }
 
 func conxGenericPostgres() *ConfigDatabase {
 	conx := &ConfigDatabase{
-		Driver:   "postgres",
-		Host:     "localhost",
-		Database: "unit_test_generic",
-		User:     "unit_test_user",
-		Password: "unit_test_password",
+		DBConfig: &serviceconfig.DBConfig{
+			Host:     "localhost",
+			Port:     "5432",
+			Password: "unit_test_password",
+			Driver:   "postgres",
+			Username: "unit_test_user",
+			Name:     "unit_test_search_generic",
+			SSLMode:  "disable",
+		},
 	}
 	if *db_postgres_host != "" {
-		conx.Host = *db_postgres_host
+		conx.DBConfig.Host = *db_postgres_host
 	}
 	return conx
 }
 
 func conxSrcPostgres(num int) *ConfigDatabase {
 	conx := &ConfigDatabase{
-		Driver:   "postgres",
-		Host:     "localhost",
-		User:     "unit_test_user",
-		Password: "unit_test_password",
+		DBConfig: &serviceconfig.DBConfig{
+			Host:     "localhost",
+			Port:     "5432",
+			Password: "unit_test_password",
+			Driver:   "postgres",
+			Username: "unit_test_user",
+			SSLMode:  "disable",
+		},
 	}
-	conx.Database = fmt.Sprintf("unit_test_search_src%v", num)
+	conx.DBConfig.Name = fmt.Sprintf("unit_test_search_src%v", num)
 	if *db_postgres_host != "" {
-		conx.Host = *db_postgres_host
+		conx.DBConfig.Host = *db_postgres_host
 	}
 	return conx
 }
@@ -105,28 +118,28 @@ func addRelationship(c *Config, dbname, table1, field1 string, reltype RelType, 
 func initDatabases() error {
 	// Connect to the "postgres" DB, where we can drop & create new databases
 	cfg_postgres := conxSrcPostgres(1)
-	cfg_postgres.Database = "postgres"
-	root, err := sql.Open(cfg_postgres.Driver, cfg_postgres.DSN())
+	cfg_postgres.DBConfig.Name = "postgres"
+	root, err := sql.Open(cfg_postgres.DBConfig.Driver, cfg_postgres.DBConfig.DSN())
 	if err != nil {
-		return fmt.Errorf("Unable to connect to database %v: %v", cfg_postgres.DSN(), err)
+		return fmt.Errorf("Unable to connect to database %v: %v", cfg_postgres.DBConfig.DSN(), err)
 	}
 	defer root.Close()
 
-	root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxIndexPostgres().Database))
+	root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxIndexPostgres().DBConfig.Name))
 
-	if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxGenericPostgres().Database)); err != nil {
-		return fmt.Errorf("Unable to drop database %v: %v", conxGenericPostgres().Database, err)
+	if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxGenericPostgres().DBConfig.Name)); err != nil {
+		return fmt.Errorf("Unable to drop database %v: %v", conxGenericPostgres().DBConfig.Name, err)
 	}
-	if _, err := root.Exec(fmt.Sprintf("CREATE DATABASE %v OWNER = unit_test_user", conxGenericPostgres().Database)); err != nil {
-		return fmt.Errorf("Unable to create database %v: %v", conxGenericPostgres().Database, err)
+	if _, err := root.Exec(fmt.Sprintf("CREATE DATABASE %v OWNER = unit_test_user", conxGenericPostgres().DBConfig.Name)); err != nil {
+		return fmt.Errorf("Unable to create database %v: %v", conxGenericPostgres().DBConfig.Name, err)
 	}
 
 	drop_and_recreate := func(num int) error {
-		if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxSrcPostgres(num).Database)); err != nil {
-			return fmt.Errorf("Unable to drop database %v: %v", conxSrcPostgres(num).Database, err)
+		if _, err := root.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %v", conxSrcPostgres(num).DBConfig.Name)); err != nil {
+			return fmt.Errorf("Unable to drop database %v: %v", conxSrcPostgres(num).DBConfig.Name, err)
 		}
-		if _, err := root.Exec(fmt.Sprintf("CREATE DATABASE %v OWNER = unit_test_user", conxSrcPostgres(num).Database)); err != nil {
-			return fmt.Errorf("Unable to create database %v: %v", conxSrcPostgres(num).Database, err)
+		if _, err := root.Exec(fmt.Sprintf("CREATE DATABASE %v OWNER = unit_test_user", conxSrcPostgres(num).DBConfig.Name)); err != nil {
+			return fmt.Errorf("Unable to create database %v: %v", conxSrcPostgres(num).DBConfig.Name, err)
 		}
 		return nil
 	}
@@ -148,15 +161,15 @@ func ensureExec(t testing.TB, db *sql.DB, query string) {
 
 func connectToDatabases(t testing.TB) (*sql.DB, *sql.DB) {
 	db1_cfg := conxSrcPostgres(1)
-	db1, err := sql.Open(db1_cfg.Driver, db1_cfg.DSN())
+	db1, err := sql.Open(db1_cfg.DBConfig.Driver, db1_cfg.DBConfig.DSN())
 	if err != nil {
-		t.Fatalf("Unable to connect to database %v: %v", db1_cfg.DSN(), err)
+		t.Fatalf("Unable to connect to database %v: %v", db1_cfg.DBConfig.DSN(), err)
 	}
 
 	db2_cfg := conxSrcPostgres(2)
-	db2, err := sql.Open(db2_cfg.Driver, db2_cfg.DSN())
+	db2, err := sql.Open(db2_cfg.DBConfig.Driver, db2_cfg.DBConfig.DSN())
 	if err != nil {
-		t.Fatalf("Unable to connect to database %v: %v", db2_cfg.DSN(), err)
+		t.Fatalf("Unable to connect to database %v: %v", db2_cfg.DBConfig.DSN(), err)
 	}
 	return db1, db2
 }
@@ -385,6 +398,16 @@ func setupRemoveTableFromIndex(t testing.TB, e *Engine) {
 
 func createBaseConfig() *Config {
 	config := &Config{}
+
+	config.IndexDBAlias = "index"
+	config.GenericDBAlias = "generic"
+
+	config.DisableAutoIndexRebuild = true
+	config.VerboseLogging = false
+
+	config.Log.ErrorFile = "./error.log"
+	config.Log.AccessFile = "./access.log"
+
 	config.Databases = make(map[string]*ConfigDatabase)
 	config.Databases[indexDatabaseName] = conxIndexPostgres()
 	config.Databases[genericDatabaseName] = conxGenericPostgres()
@@ -430,9 +453,9 @@ func setupPerformance(t testing.TB, e *Engine) {
 
 func setupUpdateConfig(t testing.TB, e *Engine) {
 	genericConfig := conxGenericPostgres()
-	genericDatabase, err := sql.Open(genericConfig.Driver, genericConfig.DSN())
+	genericDatabase, err := sql.Open(genericConfig.DBConfig.Driver, genericConfig.DBConfig.DSN())
 	if err != nil {
-		t.Fatalf("Unable to connect to database %v: %v", genericConfig.DSN(), err)
+		t.Fatalf("Unable to connect to database %v: %v", genericConfig.DBConfig.DSN(), err)
 	}
 	defer genericDatabase.Close()
 
@@ -482,7 +505,7 @@ func setup(t testing.TB, setupFunc func(testing.TB, *Engine)) *Engine {
 		t.Fatalf("Error creating config string: %v", err)
 	}
 	e.ConfigString = string(cfgString)
-	fmt.Printf("Config:\n%v\n", e.ConfigString)
+	// fmt.Printf("Config:\n%v\n", e.ConfigString)
 
 	err = e.GetConfig().postJSONLoad()
 	if err != nil {
@@ -606,6 +629,7 @@ func expectQuery(t *testing.T, e *Engine, flags int, queryString string, items .
 		SendRelatedRecords: flags&qFlagSendJoins != 0,
 		Query:              queryString,
 	}
+
 	config := e.GetConfig()
 	res, err := e.Find(query, config)
 	expected := ""
@@ -620,6 +644,7 @@ func expectQuery(t *testing.T, e *Engine, flags int, queryString string, items .
 	if err != nil {
 		t.Errorf("Error searching for %v: %v", queryString, err)
 	}
+
 	same := false
 	rows := res.Rows
 
@@ -652,7 +677,7 @@ func expectQuery(t *testing.T, e *Engine, flags int, queryString string, items .
 			}
 		}
 	}
-	//t.Logf("%v -> %v", queryString, res)
+
 	if !same {
 		t.Errorf("Incorrect result:\nQuery: %v\nResult:   %v\nExpected: %v", queryString, formatResultList(rows), expected)
 	}
@@ -671,8 +696,10 @@ func TestRank(t *testing.T) {
 	if !isDBTest() {
 		return
 	}
+
 	e := setup(t, setupCorrectness)
 
+	fmt.Printf("==> Starting actual Rank Test\n")
 	// expect schema is: db.table rowid rank key1:value1,key2:value2...
 
 	// This was a rather subtle bug. The default Postgres collation is not the same as "C" collation,
@@ -752,6 +779,7 @@ func TestRank(t *testing.T) {
 	expectQuery(t, e, qFlagSendJoins, "I-74E", "db2.pipes 2 10 pipename:I-74E,diameter:200,sparecap:150", "db2.pipe_result 2 0 flow:20", "db2.pipe_memo 2 0 material:alu")
 
 	e.Close()
+	fmt.Printf("Done With TestRank\n")
 }
 
 func TestRowCountMetadata(t *testing.T) {
@@ -891,7 +919,7 @@ func TestUpdateConfig(t *testing.T) {
 	/********************************
 	TEST SET CONFIG
 	********************************/
-	dbParam := httprouter.Param{Key: "database", Value: genericDatabaseName}
+	dbParam := httprouter.Param{Key: "database", Value: "generic"}
 	reqParams := make([]httprouter.Param, 0)
 	reqParams = append(reqParams, dbParam)
 
@@ -936,7 +964,7 @@ func TestUpdateConfig(t *testing.T) {
 	fmt.Println("Search config GET status code", getResponse.StatusCode)
 
 	updatedConfig := e.GetConfig()
-	rc := updatedConfig.Databases[genericDatabaseName].Tables["sausages"].RowCount
+	rc := updatedConfig.Databases["generic"].Tables["sausages"].RowCount
 	if rc != 1 {
 		t.Errorf("RowCount of 'sausages' is not correct. expected %v. actual = %v.", 1, rc)
 	}
