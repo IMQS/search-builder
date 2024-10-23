@@ -3,7 +3,7 @@
 ##################################
 # Builder image
 ##################################
-FROM golang:1.22 as builder
+FROM golang:1.22 AS builder
 
 ARG SSH_KEY
 
