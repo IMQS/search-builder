@@ -3,7 +3,7 @@
 ##################################
 # Builder image
 ##################################
-FROM golang:1.15 as builder
+FROM golang:1.22 AS builder
 
 ARG SSH_KEY
 
@@ -33,7 +33,12 @@ RUN go build
 ####################################
 # Deployed image
 ####################################
-FROM imqs/ubuntu-base
+FROM imqs/ubuntu-base:24.04
+
 COPY --from=builder /build/search-builder /opt/search
+
+RUN chmod +x /opt/search
+
 EXPOSE 80
+
 ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "wait-for-postgres.sh", "db", "/opt/search", "run"]

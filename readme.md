@@ -22,7 +22,61 @@ To run unit tests:
 Postgres must be installed on localhost. Create a user called unit_test_user, with
 password unit_test_password. The user must be able to create databases.
 
-    go test github.com/IMQS/search/search -db_postgres
+There were changes made that broke the unit tests which is not easily fixable; for the meantime make
+sure that the following is added to a db-aliases file close to you *just for testing*, do not push.
+
+
+```json
+{
+  "index": {
+    "driver": "postgres",
+    "host": "localhost",
+    "port": "5432",
+    "alias": "",
+    "name": "unit_test_search_index",
+    "username": "unit_test_user",
+    "password": "unit_test_password",
+    "modtrack": "install"
+  },
+  "generic": {
+    "driver": "postgres",
+    "host": "localhost",
+    "port": "5432",
+    "alias": "",
+    "name": "unit_test_search_generic",
+    "username": "unit_test_user",
+    "password": "unit_test_password",
+    "modtrack": "install"
+  },
+  "db1": {
+    "driver": "postgres",
+    "host": "localhost",
+    "port": "5432",
+    "alias": "",
+    "name": "unit_test_search_src1",
+    "username": "unit_test_user",
+    "password": "unit_test_password",
+    "modtrack": "install"
+  },
+  "db2": {
+    "driver": "postgres",
+    "host": "localhost",
+    "port": "5432",
+    "alias": "",
+    "name": "unit_test_search_src2",
+    "username": "unit_test_user",
+    "password": "unit_test_password",
+    "modtrack": "install"
+  }
+}
+```
+
+The following should now work.
+
+```bash
+	go test ./...
+```
+
 
 # Docker Build
 
