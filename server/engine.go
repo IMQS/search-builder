@@ -236,12 +236,16 @@ func (e *Engine) openIndexDB() error {
 		if err != nil {
 			return err
 		}
-	}
-	if e.IndexDB != nil {
-		cfg := e.GetConfig().Databases[conf.Name]
-		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
+	} else {
+		return fmt.Errorf("While connecting to the searchindex DB: %v", err)
 	}
 
+	if e.IndexDB == nil {
+		return errors.New("Fatal: Unreachable code. A valid connection to the index db should have been established at this point")
+	}
+
+	cfg := e.GetConfig().Databases[conf.Name]
+	e.setDBConnectionLimits(cfg, conf, e.IndexDB)
 	return nil
 }
 
