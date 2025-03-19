@@ -50,7 +50,8 @@ func createDB(conf *serviceconfig.DBConfig) error {
 }
 
 func isDBNotExistError(err error, dbName string) bool {
-	return strings.Index(err.Error(), "pq: database \""+dbName+"\" does not exist") != -1
+	return strings.Index(err.Error(), "pq: database \""+dbName+"\" does not exist") != -1 ||
+		strings.Index(err.Error(), "pq: pgbouncer cannot connect to server") != -1
 }
 
 func dropDB(conf *serviceconfig.DBConfig) error {

@@ -233,15 +233,32 @@ func (e *Engine) openIndexDB() error {
 			return err
 		}
 		e.IndexDB, err = migration.Open(conf.Driver, conf.DSN(), migrations)
+
+		// Cater for a weird edge case that we encountered in crudserver a long
+		// time ago, and now the first time in a go service.
+		// Any new DB created through pgbouncer can not be connected to
+		// immediately (for some reason, maybe new pgbouncer has fixed this?),
+		// and so we have to wait for a bit before trying to connect.
+		// - F. Engelbrecht 2025-03-18
+		if isDBNotExistError(err, conf.Name) {
+			// 10 seconds seems to be not enough for this
+			time.Sleep(15 * time.Second)
+			e.IndexDB, err = migration.Open(conf.Driver, conf.DSN(), migrations)
+		}
+
 		if err != nil {
 			return err
 		}
-	}
-	if e.IndexDB != nil {
-		cfg := e.GetConfig().Databases[conf.Name]
-		e.setDBConnectionLimits(cfg, conf, e.IndexDB)
+	} else {
+		return fmt.Errorf("While connecting to the searchindex DB: %v", err)
 	}
 
+	if e.IndexDB == nil {
+		return errors.New("Fatal: Unreachable code. A valid connection to the index db should have been established at this point")
+	}
+
+	cfg := e.GetConfig().Databases[conf.Name]
+	e.setDBConnectionLimits(cfg, conf, e.IndexDB)
 	return nil
 }
 
