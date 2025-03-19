@@ -1,0 +1,32 @@
+name: Build Pull Request
+on:
+  # Trigger the workflow on all pull request,
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+  # Also trigger on page_build, as well as release created events
+  page_build:
+  release:
+    types: # This configuration does not affect the page_build event above
+      - created
+
+jobs:
+  build:
+    name: Build PR
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        id: checkout
+        with:
+          lfs: true
+      - name: build-push
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DEPLOY_DOCKER_USERNAME }}
+          password: ${{ secrets.DEPLOY_DOCKER_PASSWORD }}
+          repository: imqs/search
+          tag_with_ref: true
+          build_args: SSH_KEY=${{ secrets.DEPLOYBOT_SSH_KEY }}
+          cache_froms: golang:1.22, imqs/ubuntu-base:24.04
