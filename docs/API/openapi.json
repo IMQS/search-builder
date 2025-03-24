@@ -1,0 +1,33 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Search Builder API",
+		"description": "Build table search queries",
+		"version": "1.0.0"
+	},
+	"servers": [],
+	"paths": {
+		"/ping": {
+			"get": {}
+		},
+		"/config": {
+			"get": {}
+		},
+		"/config/{database}": {
+			"put": {
+				"summary": "Update table(s) config for a database"
+			}
+		},
+		"/find/{query}": {
+			"get": {}
+		},
+		"/rename_table/{database}/{external}/{internal}": {
+			"put": {}
+		},
+		"delete_table/{database}/{table}": {
+			"post": {
+				"summary": "Delete config for table on database"
+			}
+		}
+	}
+}
