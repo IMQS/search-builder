@@ -5,7 +5,27 @@
 		"description": "Build table search queries",
 		"version": "1.0.0"
 	},
-	"servers": [],
+	"servers": [
+		{
+			"url": "{protocol}://{host}/{basePath}",
+			"variables": {
+				"protocol": {
+					"enum": [
+						"http",
+						"https"
+					],
+					"default": "https"
+				},
+				"host": {
+					"description": "The hostname of the environment",
+					"default": "demo.imqs.co.za"
+				},
+				"basePath": {
+					"default": "search"
+				}
+			}
+		}
+	],
 	"paths": {
 		"/ping": {
 			"get": {}
