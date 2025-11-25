@@ -1,4 +1,4 @@
-# docker build -t imqs/search:master --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
+# docker build -t imqs/search:latest --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
 
 ##################################
 # Builder image

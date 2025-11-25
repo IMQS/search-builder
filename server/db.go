@@ -223,6 +223,10 @@ func createMigrations(genericCfg *serviceconfig.DBConfig) []migration.Migrator {
 				if err := metaRows.Scan(&internalName, &externalName); err != nil {
 					return err
 				}
+
+				// Escape single quotes in names
+				externalName = strings.Replace(externalName, `'`, `''`, -1)
+
 				migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
 			}
 			metaRows.Close()
