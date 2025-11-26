@@ -222,7 +222,8 @@ func createMigrations(genericCfg *serviceconfig.DBConfig) []migration.Migrator {
 				if err := metaRows.Scan(&internalName, &externalName); err != nil {
 					return err
 				}
-				migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
+
+				migrationSQL += `UPDATE search_config SET longlived_name = ` + escapeSQLLiteral(genericDB, externalName) + ` WHERE tablename = '` + internalName + `'; `
 			}
 			metaRows.Close()
 
