@@ -224,10 +224,7 @@ func createMigrations(genericCfg *serviceconfig.DBConfig) []migration.Migrator {
 					return err
 				}
 
-				// Escape single quotes in names
-				externalName = strings.Replace(externalName, `'`, `''`, -1)
-
-				migrationSQL += `UPDATE search_config SET longlived_name = '` + externalName + `' WHERE tablename = '` + internalName + `'; `
+				migrationSQL += `UPDATE search_config SET longlived_name = ` + escapeSQLLiteral(genericDB, externalName) + ` WHERE tablename = '` + internalName + `'; `
 			}
 			metaRows.Close()
 
