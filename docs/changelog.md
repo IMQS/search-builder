@@ -1,5 +1,9 @@
 # Changelog
 
+## v5.2.1
+
+* fix(migration): Single quotes not escaped (ASG-5083)
+
 ## v5.2.0
 
 * feat(db): Better error handling (ASG-4433)
