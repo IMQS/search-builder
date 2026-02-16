@@ -1,11 +1,9 @@
-# docker build -t imqs/search:master --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
+# docker build -t imqs/search:latest --ssh default .
 
 ##################################
 # Builder image
 ##################################
 FROM golang:1.22 AS builder
-
-ARG SSH_KEY
 
 RUN mkdir /build
 
@@ -16,19 +14,13 @@ RUN mkdir -p /root/.ssh && \
 
 COPY ./ /build
 
-# Authorize SSH Host
-RUN mkdir -p /root/.ssh && \
-	chmod 0700 /root/.ssh && \
-	ssh-keyscan github.com > /root/.ssh/known_hosts
+RUN --mount=type=ssh \
+	git config --global url."git@github.com:".insteadOf "https://github.com/"
 
-
-RUN echo "$SSH_KEY" > /root/.ssh/id_rsa && \
-	chmod 600 /root/.ssh/id_rsa
-
-RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
 WORKDIR /build/
 RUN go env -w GOPRIVATE="github.com/IMQS/*"
-RUN go build
+RUN --mount=type=ssh \
+	go build
 
 ####################################
 # Deployed image
